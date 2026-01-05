@@ -1,0 +1,21 @@
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+
+*.swp
+*.swo
+
+*.log
+.env
+.env.*
+!.env.example
+
+# Build artifacts / caches
+dist/
+.gocache/
+.golangci-cache/
+
+# Runtime state (per TODO)
+data/

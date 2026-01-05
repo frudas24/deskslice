@@ -1,0 +1,327 @@
+# === ./Makefile ===
+# Build + Lint sólidos para Go (con golangci-lint)
+# - Falla si hay código no usado (U1000) o problemas comunes
+# - Formatea, vet, tidy antes de compilar
+# - Builds por OS/ARCH y variantes
+
+# --- Config base ---
+GO      ?= go
+OS      ?= $(shell $(GO) env GOOS)
+ARCH    ?= $(shell $(GO) env GOARCH)
+BIN_EXT :=
+ifeq ($(OS),windows)
+  BIN_EXT := .exe
+endif
+
+# --- Detección del directorio de binarios de Go ---
+GOBIN ?= $(shell $(GO) env GOBIN)
+ifeq ($(strip $(GOBIN)),)
+  GO_BIN_DIR := $(shell $(GO) env GOPATH)/bin
+else
+  GO_BIN_DIR := $(GOBIN)
+endif
+
+# En Windows el binario termina en .exe
+GOLANGCI_LINT_VER ?= latest
+LINT_TIMEOUT      ?= 5m
+GOLANGCI_LINT_BIN := $(GO_BIN_DIR)/golangci-lint$(BIN_EXT)
+
+# Añade ese dir al PATH durante la ejecución de make
+export PATH := $(GO_BIN_DIR):$(PATH)
+
+# For sandboxed environments ensure Go can write build cache locally.
+export GOCACHE := $(abspath ./.gocache)
+export GOLANGCI_LINT_CACHE := $(abspath ./.golangci-cache)
+
+# Build tags opcionales: make BUILD_TAGS=opencl build
+BUILD_TAGS ?=
+
+# Compilador: muestra todos los errores (-gcflags all=-e)
+GO_BUILD := GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -gcflags 'all=-e' -tags '$(BUILD_TAGS)'
+
+# Directorio de salida
+DIST_DIR := ./dist/$(OS)_$(ARCH)
+
+# Entrypoints
+CORE_ENTRY   := ./internal/cmd/core
+NEURON_ENTRY := ./internal/cmd/neuron
+
+# Binarios genéricos
+CORE_BIN   := $(DIST_DIR)/core$(BIN_EXT)
+NEURON_BIN := $(DIST_DIR)/neuron$(BIN_EXT)
+
+# Binarios por backend
+CORE_BIN_CPU      := $(DIST_DIR)/core_cpu$(BIN_EXT)
+CORE_BIN_OPENCL   := $(DIST_DIR)/core_opencl$(BIN_EXT)
+CORE_BIN_VULKAN   := $(DIST_DIR)/core_vulkan$(BIN_EXT)
+NEURON_BIN_CPU    := $(DIST_DIR)/neuron_cpu$(BIN_EXT)
+NEURON_BIN_OPENCL := $(DIST_DIR)/neuron_opencl$(BIN_EXT)
+NEURON_BIN_VULKAN := $(DIST_DIR)/neuron_vulkan$(BIN_EXT)
+
+# Flags
+LDFLAGS_PROD := -s -w
+GCFLAGS_DEV  := all=-N -l
+
+# --- Phony ---
+.PHONY: all build build-dev clean tidy fmt vet lint commentlint tools run proto \
+        build-win build-linux build-linux-arm64 build-matrix print \
+        core_cpu neuron_cpu core_opencl neuron_opencl core_vulkan neuron_vulkan build-split \
+        supertest quick-start dream-bench selftest-dry selftest-run \
+        build-opencl build-vulkan build-vulkan-auto generate-vulkan-shaders doctor \
+        world-model-bench godoc-summary godoc-audit godoc-audit-all godoc-audit-changed
+
+# --- Flujo principal ---
+all: build
+
+# Build de producción: formatea, vet, tidy y LINT antes de compilar
+build: fmt vet tidy commentlint lint $(CORE_BIN) $(NEURON_BIN)
+	@echo "✅ Compilación de producción finalizada. Binarios en '$(DIST_DIR)'."
+
+build-dev: fmt vet tidy commentlint lint
+	@echo "🧪 Compilando binarios de desarrollo (race + debug)..."
+	@mkdir -p $(DIST_DIR)
+	@GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -race -gcflags '$(GCFLAGS_DEV)' -tags '$(BUILD_TAGS)' -o $(CORE_BIN)   $(CORE_ENTRY)
+	@GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -race -gcflags '$(GCFLAGS_DEV)' -tags '$(BUILD_TAGS)' -o $(NEURON_BIN) $(NEURON_ENTRY)
+	@echo "✅ Compilación de desarrollo finalizada."
+
+# --- Lint & QA ---
+tools:
+	@if [ ! -x "$(GOLANGCI_LINT_BIN)" ]; then \
+	  echo "⬇️  instalando golangci-lint@$(GOLANGCI_LINT_VER) en $(GO_BIN_DIR) ..."; \
+	  $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VER); \
+	else \
+	  echo "✅ golangci-lint encontrado en $(GOLANGCI_LINT_BIN)"; \
+	fi
+
+fmt:
+	@echo "🧹 gofmt -s"
+	@find . -name "*.go" -not -path "./vendor/*" -not -path "./dist/*" -not -path "./_tmp/*" -not -path "./**/*.pb.go" -print0 | xargs -0 gofmt -s -w
+	@echo "🧹 go fmt ./..."
+	@$(GO) fmt ./...
+
+vet:
+	@echo "🔍 go vet"
+	@$(GO) vet ./...
+
+lint: commentlint
+	@echo "🔎 golangci-lint (install if missing)"
+	@$(MAKE) tools >/dev/null
+	@"$(GOLANGCI_LINT_BIN)" run --timeout $(LINT_TIMEOUT) ./...
+
+commentlint:
+	@echo "📝 commentlint (doc comments en todas las funciones)"
+	@$(GO) run ./third_party/commentlint ./...
+
+# --- Auditoría de GoDoc (scripts/tools) ---
+godoc-summary:
+	@echo "📊 Resumen GoDoc (internal/, modo estricto named)"
+	@find internal -type f -name '*.go' | tools/godoclint/check_go_docs.pl named
+
+godoc-audit:
+	@echo "📋 Top archivos con más faltantes (internal/, 30 primeros)"
+	@find internal -type f -name '*.go' | tools/godoclint/check_go_docs.pl named --byfile | head -n 30
+
+godoc-audit-all:
+	@echo "📋 Top archivos con más faltantes (repo completo, 30 primeros)"
+	@find . -type f -name '*.go' \
+	  -not -path './vendor/*' \
+	  -not -path './_tmp/*' \
+	  -not -path './dist/*' \
+	  -not -path './.gocache/*' \
+	  -not -path './.golangci-cache/*' \
+	  -not -path './log/*' \
+	| tools/godoclint/check_go_docs.pl named --byfile | head -n 30
+
+godoc-audit-changed:
+	@echo "📋 Archivos .go cambiados vs HEAD (estricto named)"
+	@{ \
+	  if command -v git >/dev/null 2>&1; then \
+	    git diff --name-only --diff-filter=ACMRTUXB HEAD | grep -E '\\.go$$' || true; \
+	  else \
+	    echo ""; \
+	  fi; \
+	} | tools/godoclint/check_go_docs.pl named --byfile || true
+
+tidy:
+	@$(GO) mod tidy
+	@echo "📦 Dependencias actualizadas."
+
+# --- Targets por plataforma (producción) ---
+build-win:
+	@$(MAKE) OS=windows ARCH=amd64 build
+
+build-linux:
+	@$(MAKE) OS=linux ARCH=amd64 build
+
+build-linux-arm64:
+	@$(MAKE) OS=linux ARCH=arm64 build
+
+# Matriz multi-OS/ARCH
+build-matrix: fmt vet tidy lint
+	@$(MAKE) build-win
+	@$(MAKE) build-linux
+	@$(MAKE) build-linux-arm64
+	@echo "🧳 Paquetes multi-plataforma listos en ./dist/*"
+
+# --- Reglas de objetos ---
+$(CORE_BIN): $(CORE_ENTRY) go.mod
+	@echo "🚀 Compilando core (Producción) para $(OS)/$(ARCH)..."
+	@mkdir -p $(DIST_DIR)
+	@$(GO_BUILD) -ldflags '$(LDFLAGS_PROD)' -o $@ $(CORE_ENTRY)
+
+$(NEURON_BIN): $(NEURON_ENTRY) go.mod
+	@echo "🚀 Compilando neuron (Producción) para $(OS)/$(ARCH)..."
+	@mkdir -p $(DIST_DIR)
+	@$(GO_BUILD) -ldflags '$(LDFLAGS_PROD)' -o $@ $(NEURON_ENTRY)
+
+# --- Split binaries por backend ---
+core_cpu: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -o $(CORE_BIN_CPU) $(CORE_ENTRY)
+
+neuron_cpu: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -o $(NEURON_BIN_CPU) $(NEURON_ENTRY)
+
+core_opencl: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -tags opencl -o $(CORE_BIN_OPENCL) $(CORE_ENTRY)
+
+neuron_opencl: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -tags opencl -o $(NEURON_BIN_OPENCL) $(NEURON_ENTRY)
+
+core_vulkan: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -tags vulkan -o $(CORE_BIN_VULKAN) $(CORE_ENTRY)
+
+neuron_vulkan: fmt vet tidy lint
+	@mkdir -p $(DIST_DIR)
+	@$(GO) build -tags vulkan -o $(NEURON_BIN_VULKAN) $(NEURON_ENTRY)
+
+# Convenience: construir todas las variantes
+build-split: core_cpu neuron_cpu core_opencl neuron_opencl generate-vulkan-shaders core_vulkan neuron_vulkan
+
+# --- Utilidades ---
+clean:
+	@echo "🧹 Eliminando artefactos de compilación..."
+	@rm -rf ./dist
+
+print:
+	@echo "ℹ️  GO=$(GO)"
+	@echo "ℹ️  OS=$(OS)"
+	@echo "ℹ️  ARCH=$(ARCH)"
+	@echo "ℹ️  DIST_DIR=$(DIST_DIR)"
+
+# --- Proto / gRPC (Fase RPC) ---
+PROTO_DIR := ./internal/rpc/proto
+PROTO_SRC := $(PROTO_DIR)/synapse.proto
+PROTO_GO  := $(PROTO_DIR)/synapse_grpc.pb.go
+
+proto:
+	@if [ -f $(PROTO_SRC) ]; then \
+		echo "🧬 Generando código gRPC desde $(PROTO_SRC)..."; \
+		protoc -I $(PROTO_DIR) --go_out=$(PROTO_DIR) --go-grpc_out=$(PROTO_DIR) $(PROTO_SRC); \
+		echo "✅ Código gRPC actualizado: $(PROTO_GO)"; \
+	else \
+		echo "ℹ️  No se encontró $(PROTO_SRC). Omite generación gRPC."; \
+	fi
+
+# --- Run helpers ---
+# Default seed for reproducible dev runs. Override with `make run SEED=0` for random.
+SEED ?= 1
+run: build
+	@echo "🏁 Ejecutando core con config.json$(if $(PROFILE), (profile=$(PROFILE)),)..."
+	@$(CORE_BIN) --config ./config.json --seed $(SEED) $(if $(PROFILE),--profile $(PROFILE),) || true
+
+.PHONY: run-starter
+run-starter: build
+	@echo "🏁 Ejecutando core con config_starter.json..."
+	@$(CORE_BIN) --config ./config_starter.json --seed $(SEED) $(if $(PROFILE),--profile $(PROFILE),) || true
+
+.PHONY: run-dev run-bench run-prod
+# Atajos: ejecuta con perfiles predefinidos
+run-dev: PROFILE=dev
+run-dev: run
+
+run-bench: PROFILE=bench
+run-bench: run
+
+run-prod: PROFILE=prod
+run-prod: run
+
+.PHONY: run-opencl run-dev-opencl run-bench-opencl run-prod-opencl
+run-opencl:
+	@$(MAKE) BUILD_TAGS=opencl run
+
+run-dev-opencl:
+	@$(MAKE) BUILD_TAGS=opencl run-dev
+
+run-bench-opencl:
+	@$(MAKE) BUILD_TAGS=opencl run-bench
+
+run-prod-opencl:
+	@$(MAKE) BUILD_TAGS=opencl run-prod
+
+.PHONY: supertest supertest-dataset selftest-dry selftest-run
+
+supertest: build
+	@bash tests/run_test/run_supertest.sh
+
+.PHONY: supertest-dataset
+supertest-dataset: build
+	@bash tests/run_test/run_supertest_dataset.sh
+
+.PHONY: quick-start
+quick-start: build
+	@bash tests/harness/quick_start.sh
+
+.PHONY: dream-bench
+dream-bench:
+	@DREAM_BENCH_ARGS="$(ARGS)" bash tests/harness/hippo/dream_bench.sh
+
+.PHONY: world-model-bench
+world-model-bench:
+	@./tests/harness/hippo/world_model_bench.sh
+
+selftest-dry: build
+	@echo "🧪 SelfTest dry..."
+	@$(DIST_DIR)/core$(BIN_EXT) --config ./config_test.json --selftest=dry
+
+selftest-run: build
+	@echo "🧪 SelfTest run (e2e)..."
+	@$(DIST_DIR)/core$(BIN_EXT) --config ./config_test.json --selftest=run
+	@echo "📄 Reporte: tests/run_test/_tmp/supertest_report.json"
+
+# --- Diagnóstico ---
+doctor:
+	@echo "GO=$(GO)"
+	@echo "GO_BIN_DIR=$(GO_BIN_DIR)"
+	@echo "GOBIN=$$($(GO) env GOBIN)"
+	@echo "GOPATH=$$($(GO) env GOPATH)"
+	@echo "Buscando golangci-lint en: $(GOLANGCI_LINT_BIN)"
+	@ls -l "$(GOLANGCI_LINT_BIN)" 2>/dev/null || echo "❌ no instalado"
+
+# --- GPU builds convenience ---
+.PHONY: build-opencl build-vulkan build-vulkan-auto generate-vulkan-shaders
+
+build-opencl:
+	@$(MAKE) BUILD_TAGS=opencl build
+
+build-vulkan:
+	@$(MAKE) BUILD_TAGS=vulkan build
+
+build-vulkan-auto: generate-vulkan-shaders build-vulkan
+
+generate-vulkan-shaders:
+	@echo "🔧 Generando SPIR-V y código Go embebido (glslc o glslangValidator)..."
+	@set -e; \
+	if command -v glslc >/dev/null 2>&1; then \
+	  glslc -O internal/gpuaccel/shaders/sobel.comp -o internal/gpuaccel/shaders/sobel.spv; \
+	elif command -v glslangValidator >/dev/null 2>&1; then \
+	  glslangValidator -V internal/gpuaccel/shaders/sobel.comp -o internal/gpuaccel/shaders/sobel.spv; \
+	else \
+	  echo "❌ Falta 'glslc' o 'glslangValidator'. Instala: glslang-tools o shaderc-tools"; exit 1; \
+	fi; \
+	GOOS=$(OS) GOARCH=$(ARCH) $(GO) run internal/gpuaccel/cmd/gen_spirv/main.go -in internal/gpuaccel/shaders/sobel.spv -out internal/gpuaccel/sobel_spirv.go -pkg gpuaccel -var sobelSPV; \
+	echo "✅ Embebido generado: internal/gpuaccel/sobel_spirv.go"

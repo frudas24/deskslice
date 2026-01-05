@@ -1,0 +1,36 @@
+run:
+  timeout: 5m
+  tests: true
+  new: false
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - revive
+    - unused
+    - gosimple
+    - gocritic
+    - stylecheck
+
+linters-settings:
+  govet:
+    enable:
+      - unusedwrite
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  exclude-dirs:
+    - .gocache
+    - .golangci-cache
+    - data
+    - dist
+    - vendor
+    - internal/rpc/proto
+  exclude-files:
+    - ".*_grpc\\.pb\\.go"
+    - ".*\\.pb\\.go"

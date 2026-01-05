@@ -1,0 +1,58 @@
+run:
+  timeout: 5m
+  tests: true
+  # Show all issues (not only new ones)
+  new: false
+
+linters:
+  enable:
+    - govet
+    - staticcheck   # U1000 (código no usado), SA*
+    - errcheck
+    - ineffassign
+    - revive
+    - unused        # detecta constantes/vars/funciones no usadas más allá del compilador
+    - gosimple      # simplificaciones (e.g., switches etiquetados)
+    - gocritic      # sugerencias/estilo/opinions útiles
+    - stylecheck    # comentarios y estilo (Go style)
+
+linters-settings:
+  govet:
+    enable:
+      - unusedwrite
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: synapse/internal/snapfs
+            desc: "thin-waist: no import of concrete snapfs; use snapstore.Open"
+          - pkg: synapse/internal/snapbin
+            desc: "thin-waist: no import of concrete snapbin; use snapstore.Open"
+          - pkg: synapse/internal/snapjsonl
+            desc: "thin-waist: no import of concrete snapjsonl; use snapstore.Open"
+          - pkg: synapse/internal/snapmem
+            desc: "thin-waist: no import of concrete snapmem; use snapstore.Open"
+        # Allow these packages to import drivers for registration/tools
+        allow:
+          - synapse/internal/snapstore
+          - synapse/internal/snapfs
+          - synapse/internal/snapbin
+          - synapse/internal/snapjsonl
+          - synapse/internal/snapmem
+          - synapse/internal/cmd/snaputil
+        files:
+          # allow tests to import mem driver for registration
+          - ".*_test\\.go$"
+
+issues:
+  # 0 = sin límite; no truncar a 10
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+  exclude-dirs:
+    - dist
+    - vendor
+    - internal/rpc/proto
+  exclude-files:
+    - ".*_grpc\\.pb\\.go"
+    - ".*\\.pb\\.go"
