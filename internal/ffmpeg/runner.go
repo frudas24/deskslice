@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/frudas24/deskslice/internal/calib"
 	"github.com/frudas24/deskslice/internal/monitor"
@@ -22,8 +23,9 @@ const (
 
 // Runner manages the ffmpeg process lifecycle.
 type Runner struct {
-	mu  sync.Mutex
-	cmd *exec.Cmd
+	mu     sync.Mutex
+	cmd    *exec.Cmd
+	waitCh chan error
 }
 
 // NewRunner returns a new Runner instance.
@@ -87,19 +89,15 @@ func (r *Runner) startLocked(mode string, m monitor.Monitor, plugin calib.Rect, 
 		return 0, nil, err
 	}
 
-	cmd, err := startCmd(opts.FFmpegPath, args)
-	if err != nil {
-		args, err = buildArgs(mode, m, plugin, opts, port, false)
-		if err != nil {
-			return 0, nil, err
-		}
-		cmd, err = startCmd(opts.FFmpegPath, args)
-	}
+	cmd, waitCh, err := startWithFallback(opts.FFmpegPath, args, func() ([]string, error) {
+		return buildArgs(mode, m, plugin, opts, port, false)
+	})
 	if err != nil {
 		return 0, nil, err
 	}
 
 	r.cmd = cmd
+	r.waitCh = waitCh
 	stop := func() error {
 		r.mu.Lock()
 		defer r.mu.Unlock()
@@ -116,8 +114,11 @@ func (r *Runner) stopLocked() error {
 	if err := r.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return err
 	}
-	_, _ = r.cmd.Process.Wait()
+	if r.waitCh != nil {
+		<-r.waitCh
+	}
 	r.cmd = nil
+	r.waitCh = nil
 	return nil
 }
 
@@ -142,6 +143,51 @@ func startCmd(path string, args []string) (*exec.Cmd, error) {
 		return nil, err
 	}
 	return cmd, nil
+}
+
+// startWithFallback launches ffmpeg and falls back if it exits early.
+func startWithFallback(path string, args []string, fallback func() ([]string, error)) (*exec.Cmd, chan error, error) {
+	cmd, err := startCmd(path, args)
+	if err != nil {
+		return nil, nil, err
+	}
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	exited, exitErr := waitForExit(waitCh, 700*time.Millisecond)
+	if exited {
+		_ = cmd.Process.Kill()
+		<-waitCh
+		fallbackArgs, err := fallback()
+		if err != nil {
+			return nil, nil, err
+		}
+		cmd, err = startCmd(path, fallbackArgs)
+		if err != nil {
+			if exitErr != nil {
+				return nil, nil, fmt.Errorf("ffmpeg exited early: %w", exitErr)
+			}
+			return nil, nil, err
+		}
+		waitCh = make(chan error, 1)
+		go func() {
+			waitCh <- cmd.Wait()
+		}()
+	}
+
+	return cmd, waitCh, nil
+}
+
+// waitForExit waits for a process to exit or times out.
+func waitForExit(waitCh <-chan error, timeout time.Duration) (bool, error) {
+	select {
+	case err := <-waitCh:
+		return true, err
+	case <-time.After(timeout):
+		return false, nil
+	}
 }
 
 // allocatePort reserves a local UDP port and returns it.

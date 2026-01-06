@@ -116,9 +116,13 @@ func (p *Publisher) AttachRTP(port int) error {
 
 // StartForwarding begins forwarding RTP packets into the WebRTC track.
 func (p *Publisher) StartForwarding() error {
+	track, err := p.Track()
+	if err != nil {
+		return err
+	}
+
 	p.mu.Lock()
 	listener := p.rtpListener
-	track := p.track
 	p.mu.Unlock()
 
 	if listener == nil || track == nil {
