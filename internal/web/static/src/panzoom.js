@@ -48,10 +48,12 @@ export function bindPanZoom({ target, getEnabled, apply, onTap }) {
       }
       const dist = distance(pts[0], pts[1]);
       const c = center(pts[0], pts[1]);
-      const ratio = base.dist > 0 ? dist / base.dist : 1;
+      const rawRatio = base.dist > 0 ? dist / base.dist : 1;
+      const ratio = 1 + (rawRatio-1) * 0.5;
       const dx = c.x - base.center.x;
       const dy = c.y - base.center.y;
       apply?.({ type: "pinch", ratio, dx, dy, bounds: target.getBoundingClientRect() });
+      base = { dist, center: c };
       event.preventDefault();
       return;
     }
@@ -126,4 +128,3 @@ function distance(a, b) {
 function center(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
-
