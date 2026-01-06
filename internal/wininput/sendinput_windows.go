@@ -3,7 +3,12 @@
 // Package wininput defines Windows input injection interfaces.
 package wininput
 
-import "github.com/lxn/win"
+import (
+	"syscall"
+	"unsafe"
+
+	"github.com/lxn/win"
+)
 
 // WinInjector injects mouse and keyboard input using WinAPI.
 type WinInjector struct{}
@@ -13,9 +18,15 @@ func NewInjector() (Injector, error) {
 	return &WinInjector{}, nil
 }
 
+type input struct {
+	Type uint32
+	_    uint32
+	Mi   win.MOUSEINPUT
+}
+
 // sendMouseInput dispatches a single mouse input event.
 func sendMouseInput(flags uint32, dx, dy int32, data uint32) error {
-	input := win.INPUT{
+	inp := input{
 		Type: win.INPUT_MOUSE,
 		Mi: win.MOUSEINPUT{
 			Dx:        dx,
@@ -24,27 +35,18 @@ func sendMouseInput(flags uint32, dx, dy int32, data uint32) error {
 			DwFlags:   flags,
 		},
 	}
-	if win.SendInput(1, &input, int32(unsafeSizeofInput())) != 1 {
-		return win.GetLastError()
+	if win.SendInput(1, unsafe.Pointer(&inp), int32(unsafe.Sizeof(inp))) != 1 {
+		return syscall.Errno(win.GetLastError())
 	}
 	return nil
 }
 
 // sendKeyboardInput dispatches a single keyboard input event.
 func sendKeyboardInput(key win.KEYBDINPUT) error {
-	input := win.INPUT{
-		Type: win.INPUT_KEYBOARD,
-		Ki:   key,
-	}
-	if win.SendInput(1, &input, int32(unsafeSizeofInput())) != 1 {
-		return win.GetLastError()
+	inp := input{Type: win.INPUT_KEYBOARD}
+	*(*win.KEYBDINPUT)(unsafe.Pointer(&inp.Mi)) = key
+	if win.SendInput(1, unsafe.Pointer(&inp), int32(unsafe.Sizeof(inp))) != 1 {
+		return syscall.Errno(win.GetLastError())
 	}
 	return nil
 }
-
-// unsafeSizeofInput returns the input struct size for SendInput.
-func unsafeSizeofInput() uintptr {
-	return unsafeSizeofInputValue
-}
-
-var unsafeSizeofInputValue = uintptr(win.SizeofINPUT)

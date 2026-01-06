@@ -49,7 +49,7 @@ func mapAbsolute(x, y int) (int32, int32) {
 	if vh <= 1 {
 		vh = 2
 	}
-	dx := (x - vx) * 65535 / (vw - 1)
-	dy := (y - vy) * 65535 / (vh - 1)
+	dx := (int64(x) - int64(vx)) * 65535 / int64(vw-1)
+	dy := (int64(y) - int64(vy)) * 65535 / int64(vh-1)
 	return int32(dx), int32(dy)
 }

@@ -11,13 +11,19 @@ import (
 	"github.com/lxn/win"
 )
 
+var (
+	user32                  = syscall.NewLazyDLL("user32.dll")
+	procEnumDisplayMonitors = user32.NewProc("EnumDisplayMonitors")
+)
+
 // ListMonitors returns the list of available displays using WinAPI.
 func ListMonitors() ([]Monitor, error) {
 	state := &enumState{}
 	callback := syscall.NewCallback(state.enumProc)
 
-	if ok := win.EnumDisplayMonitors(0, nil, callback, 0); !ok {
-		return nil, fmt.Errorf("EnumDisplayMonitors failed: %w", syscall.GetLastError())
+	ret, _, err := procEnumDisplayMonitors.Call(0, 0, callback, 0)
+	if ret == 0 {
+		return nil, fmt.Errorf("EnumDisplayMonitors failed: %w", err)
 	}
 	if len(state.list) == 0 {
 		return nil, fmt.Errorf("no monitors detected")
