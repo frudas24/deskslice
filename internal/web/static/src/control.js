@@ -60,6 +60,10 @@ export class ControlClient {
     this.send({ t: "enter" });
   }
 
+  clearChat() {
+    this.send({ t: "clearChat" });
+  }
+
   sendCalib(step, rect) {
     this.send({ t: "calibRect", step, rect });
   }

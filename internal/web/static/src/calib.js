@@ -17,7 +17,17 @@ export class Calibrator {
       chat: null,
       scroll: null,
     };
+    this.expectedSize = null;
     this.bind();
+  }
+
+  setExpectedSize(size) {
+    if (!size || !size.width || !size.height) {
+      this.expectedSize = null;
+      return;
+    }
+    this.expectedSize = { width: size.width, height: size.height };
+    this.resize();
   }
 
   bind() {
@@ -194,9 +204,11 @@ export class Calibrator {
   mediaSize(bounds) {
     const fallbackWidth = this.fallback?.naturalWidth || 0;
     const fallbackHeight = this.fallback?.naturalHeight || 0;
+    const expectedWidth = this.expectedSize?.width || 0;
+    const expectedHeight = this.expectedSize?.height || 0;
     return {
-      width: this.video.videoWidth || fallbackWidth || bounds.width,
-      height: this.video.videoHeight || fallbackHeight || bounds.height,
+      width: this.video.videoWidth || fallbackWidth || expectedWidth || bounds.width,
+      height: this.video.videoHeight || fallbackHeight || expectedHeight || bounds.height,
     };
   }
 

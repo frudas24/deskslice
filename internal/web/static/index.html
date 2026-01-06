@@ -16,6 +16,7 @@
         <div class="status">
           <span class="dot" id="status-dot"></span>
           <span id="status-text">offline</span>
+          <button type="button" class="btn" id="toggle-fullscreen">Fullscreen</button>
         </div>
       </header>
 
@@ -25,6 +26,9 @@
             <video id="video" autoplay playsinline muted></video>
             <img id="mjpeg" alt="MJPEG preview">
             <canvas id="overlay"></canvas>
+            <button type="button" class="edge-tab left" id="toggle-left-panel">Menu</button>
+            <button type="button" class="edge-tab right" id="toggle-right-panel">Chat</button>
+            <button type="button" class="edge-exit" id="exit-fullscreen">Exit</button>
           </div>
           <div class="hint" id="hint-text">
             Login to connect and start streaming.
@@ -35,6 +39,7 @@
             <div class="row">
               <button type="button" class="btn primary" id="send-text">Send</button>
               <button type="button" class="btn" id="send-enter">Enter</button>
+              <button type="button" class="btn" id="clear-chat">Clear</button>
             </div>
           </div>
         </section>
@@ -86,6 +91,7 @@
           </div>
         </section>
       </main>
+      <div class="fs-backdrop" id="fs-backdrop"></div>
     </div>
     <script type="module" src="./src/main.js"></script>
   </body>

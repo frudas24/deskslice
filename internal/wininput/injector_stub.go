@@ -51,6 +51,16 @@ func (n *NoopInjector) Enter() error {
 	return ErrUnsupported
 }
 
+// SelectAll returns ErrUnsupported.
+func (n *NoopInjector) SelectAll() error {
+	return ErrUnsupported
+}
+
+// Delete returns ErrUnsupported.
+func (n *NoopInjector) Delete() error {
+	return ErrUnsupported
+}
+
 // Wheel returns ErrUnsupported.
 func (n *NoopInjector) Wheel(delta int) error {
 	_ = delta

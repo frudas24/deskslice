@@ -108,6 +108,8 @@ func (s *Server) handleMessage(msg Message) error {
 		return s.handleType(msg.Text)
 	case "enter":
 		return s.handleEnter()
+	case "clearChat":
+		return s.handleClearChat()
 	case "setMode":
 		s.session.SetMode(msg.Mode)
 		s.notifyPipeline("mode")
@@ -203,6 +205,31 @@ func (s *Server) handleEnter() error {
 	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
 	actions := ActionsForEnter(s.session.InputEnabled(), chatAbs)
 	return s.applyActions(actions)
+}
+
+// handleClearChat focuses the chat input and clears its contents.
+func (s *Server) handleClearChat() error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
+	c := s.session.GetCalib()
+	pluginAbs, err := s.pluginAbsVirtual(c)
+	if err != nil {
+		return err
+	}
+	chat := calib.Normalize(c.ChatRel)
+	if chat.W <= 0 || chat.H <= 0 {
+		return fmt.Errorf("chat rect not calibrated")
+	}
+	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
+	x, y := centerPoint(chatAbs)
+	if err := s.injector.ClickAt(x, y); err != nil {
+		return err
+	}
+	if err := s.injector.SelectAll(); err != nil {
+		return err
+	}
+	return s.injector.Delete()
 }
 
 // handleCalibRect updates calibration state.

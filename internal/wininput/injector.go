@@ -9,5 +9,7 @@ type Injector interface {
 	ClickAt(x, y int) error
 	TypeUnicode(text string) error
 	Enter() error
+	SelectAll() error
+	Delete() error
 	Wheel(delta int) error
 }

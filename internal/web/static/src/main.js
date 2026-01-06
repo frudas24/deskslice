@@ -2,6 +2,7 @@ import { login, getState, getMonitors } from "./api.js";
 import { ControlClient, bindPointerEvents } from "./control.js";
 import { WebRTCClient } from "./webrtc.js";
 import { Calibrator } from "./calib.js";
+import { bindFullscreen } from "./fullscreen.js";
 
 const app = document.querySelector(".app");
 const statusDot = document.getElementById("status-dot");
@@ -26,10 +27,16 @@ const calibHint = document.getElementById("calib-hint");
 const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
 const sendEnterBtn = document.getElementById("send-enter");
+const clearChatBtn = document.getElementById("clear-chat");
 const video = document.getElementById("video");
 const mjpegImg = document.getElementById("mjpeg");
 const overlay = document.getElementById("overlay");
 const videoWrap = document.querySelector(".video-wrap");
+const fullscreenToggle = document.getElementById("toggle-fullscreen");
+const fullscreenExit = document.getElementById("exit-fullscreen");
+const leftPanelToggle = document.getElementById("toggle-left-panel");
+const rightPanelToggle = document.getElementById("toggle-right-panel");
+const fullscreenBackdrop = document.getElementById("fs-backdrop");
 
 let controlClient = null;
 let webrtcClient = null;
@@ -37,6 +44,9 @@ let calibrator = null;
 let aspectPollTimer = null;
 let lastWrapAspect = "";
 let videoMode = "mjpeg";
+let fullscreen = null;
+let expectedMedia = null;
+let cachedMonitors = null;
 
 setStatus("offline");
 if (video) {
@@ -106,10 +116,12 @@ sendTextBtn.addEventListener("click", () => {
 });
 
 sendEnterBtn.addEventListener("click", () => controlClient?.sendEnter());
+clearChatBtn.addEventListener("click", () => controlClient?.clearChat());
 
 async function bootstrap() {
   controls.style.display = "flex";
   const [state, monitors] = await Promise.all([getState(), getMonitors()]);
+  cachedMonitors = monitors;
   populateMonitors(monitors, state.monitor);
   applyState(state);
 
@@ -121,10 +133,20 @@ async function bootstrap() {
   }, (text) => {
     calibHint.textContent = text;
   }, mjpegImg);
+  calibrator.setExpectedSize?.(expectedMedia);
 
   bindPointerEvents(overlay, (event) => normalizedPoint(event), (type, id, x, y) => {
     controlClient?.sendPointer(type, id, x, y);
   });
+
+  fullscreen = bindFullscreen({
+    toggleButton: fullscreenToggle,
+    exitButton: fullscreenExit,
+    leftToggle: leftPanelToggle,
+    rightToggle: rightPanelToggle,
+    backdrop: fullscreenBackdrop,
+  });
+  fullscreen.setEnabled(app.dataset.auth === "true");
 
   if (videoMode === "mjpeg") {
     startMJPEG();
@@ -139,6 +161,8 @@ function applyState(state) {
   inputToggle.checked = Boolean(state.inputEnabled);
   videoMode = state.videoMode || "mjpeg";
   updateVideoButtons(videoMode);
+  expectedMedia = computeExpectedMedia(state, cachedMonitors);
+  calibrator?.setExpectedSize?.(expectedMedia);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
 }
 
@@ -304,10 +328,29 @@ function contentRect(bounds) {
 function mediaSize(bounds) {
   const mjpegW = mjpegImg?.naturalWidth || 0;
   const mjpegH = mjpegImg?.naturalHeight || 0;
+  const expectedW = expectedMedia?.width || 0;
+  const expectedH = expectedMedia?.height || 0;
   return {
-    width: video.videoWidth || mjpegW || bounds.width,
-    height: video.videoHeight || mjpegH || bounds.height,
+    width: video.videoWidth || mjpegW || expectedW || bounds.width,
+    height: video.videoHeight || mjpegH || expectedH || bounds.height,
   };
+}
+
+function computeExpectedMedia(state, monitors) {
+  if (!state || !monitors || !Array.isArray(monitors)) {
+    return null;
+  }
+  const calib = state.calibData || null;
+  const monitorIndex = calib?.MonitorIndex || state.monitor;
+  const monitor = monitors.find((m) => (m.Index ?? m.index) === monitorIndex);
+  if (!monitor) return null;
+  if (state.mode === "run" && calib?.PluginAbs?.W && calib?.PluginAbs?.H) {
+    return { width: calib.PluginAbs.W, height: calib.PluginAbs.H };
+  }
+  const w = monitor.W ?? monitor.w;
+  const h = monitor.H ?? monitor.h;
+  if (!w || !h) return null;
+  return { width: w, height: h };
 }
 
 function buildWsUrl(path) {

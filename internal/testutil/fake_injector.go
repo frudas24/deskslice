@@ -55,6 +55,18 @@ func (f *FakeInjector) Enter() error {
 	return nil
 }
 
+// SelectAll records a select-all chord.
+func (f *FakeInjector) SelectAll() error {
+	f.Calls = append(f.Calls, Call{Name: "SelectAll"})
+	return nil
+}
+
+// Delete records a delete key press.
+func (f *FakeInjector) Delete() error {
+	f.Calls = append(f.Calls, Call{Name: "Delete"})
+	return nil
+}
+
 // Wheel records a mouse wheel delta.
 func (f *FakeInjector) Wheel(delta int) error {
 	f.Calls = append(f.Calls, Call{Name: "Wheel", Y: delta})

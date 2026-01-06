@@ -105,6 +105,7 @@ func (a *App) handleState(w http.ResponseWriter, _ *http.Request) {
 		InputEnabled:  snap.InputEnabled,
 		VideoMode:     snap.VideoMode,
 		Calib:         buildCalibStatus(snap.Calib),
+		CalibData:     &snap.Calib,
 		Authenticated: snap.Authenticated,
 	}
 	_ = json.NewEncoder(w).Encode(resp)
