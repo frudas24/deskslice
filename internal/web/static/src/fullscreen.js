@@ -4,7 +4,10 @@ export function bindFullscreen({
   exitButton,
   leftToggle,
   rightToggle,
+  closeLeft,
+  closeRight,
   backdrop,
+  videoSurface,
 }) {
   const toggles = Array.isArray(toggleButtons) ? toggleButtons.filter(Boolean) : [];
   if (toggleButton) {
@@ -39,12 +42,24 @@ export function bindFullscreen({
     document.body.classList.toggle("drawer-left-open");
     document.body.classList.remove("drawer-right-open");
     syncBackdrop();
+    showControls();
   });
 
   rightToggle.addEventListener("click", () => {
     if (!enabled) return;
     document.body.classList.toggle("drawer-right-open");
     document.body.classList.remove("drawer-left-open");
+    syncBackdrop();
+    showControls();
+  });
+
+  closeLeft?.addEventListener("click", () => {
+    document.body.classList.remove("drawer-left-open");
+    syncBackdrop();
+  });
+
+  closeRight?.addEventListener("click", () => {
+    document.body.classList.remove("drawer-right-open");
     syncBackdrop();
   });
 
@@ -60,6 +75,17 @@ export function bindFullscreen({
     document.body.classList.remove("drawer-left-open");
     document.body.classList.remove("drawer-right-open");
     syncBackdrop();
+    showControls();
+  });
+
+  videoSurface?.addEventListener("pointerdown", (event) => {
+    if (!document.body.classList.contains("is-fullscreen")) {
+      return;
+    }
+    if (event.target?.closest?.(".edge-tab, .edge-exit, .control-panel, .typing-panel")) {
+      return;
+    }
+    showControls();
   });
 
   function syncBackdrop() {
@@ -68,11 +94,31 @@ export function bindFullscreen({
     backdrop.style.display = open ? "block" : "none";
   }
 
+  let hideTimer = null;
+  function showControls() {
+    if (!document.body.classList.contains("is-fullscreen")) {
+      document.body.classList.remove("fs-controls-visible");
+      return;
+    }
+    document.body.classList.add("fs-controls-visible");
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+    }
+    hideTimer = setTimeout(() => {
+      hideTimer = null;
+      if (!document.body.classList.contains("drawer-left-open") &&
+        !document.body.classList.contains("drawer-right-open")) {
+        document.body.classList.remove("fs-controls-visible");
+      }
+    }, 2200);
+  }
+
   async function safeEnterFullscreen() {
     try {
       await document.documentElement.requestFullscreen();
     } catch (_) {
       document.body.classList.add("is-fullscreen");
+      showControls();
     }
   }
 
@@ -86,6 +132,7 @@ export function bindFullscreen({
     } catch (_) {
       document.body.classList.remove("is-fullscreen");
     }
+    document.body.classList.remove("fs-controls-visible");
   }
 
   return {
@@ -100,8 +147,10 @@ export function bindFullscreen({
       if (!enabled) {
         document.body.classList.remove("drawer-left-open");
         document.body.classList.remove("drawer-right-open");
+        document.body.classList.remove("fs-controls-visible");
         syncBackdrop();
       }
     },
+    showControls,
   };
 }

@@ -36,6 +36,7 @@
           </div>
           <div class="section typing-panel">
             <div class="section-title">Typing</div>
+            <button type="button" class="drawer-close" id="close-right-panel">Close</button>
             <textarea id="typebox" rows="4" placeholder="Type and send..."></textarea>
             <div class="row">
               <button type="button" class="btn primary" id="send-text">Send</button>
@@ -56,11 +57,12 @@
           </form>
 
           <div class="controls" id="controls">
+            <button type="button" class="drawer-close" id="close-left-panel">Close</button>
             <div class="section">
-            <div class="section-title">Session</div>
-            <div class="row">
-              <button type="button" class="btn" id="mode-presetup">Stop</button>
-              <button type="button" class="btn" id="mode-run">Run</button>
+              <div class="section-title">Session</div>
+              <div class="row">
+                <button type="button" class="btn" id="mode-presetup">Stop</button>
+                <button type="button" class="btn" id="mode-run">Run</button>
             </div>
             <div class="row">
               <button type="button" class="btn" id="video-webrtc">WebRTC</button>

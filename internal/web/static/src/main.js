@@ -37,6 +37,8 @@ const fullscreenToggleInline = document.getElementById("toggle-fullscreen-inline
 const fullscreenExit = document.getElementById("exit-fullscreen");
 const leftPanelToggle = document.getElementById("toggle-left-panel");
 const rightPanelToggle = document.getElementById("toggle-right-panel");
+const closeLeftPanel = document.getElementById("close-left-panel");
+const closeRightPanel = document.getElementById("close-right-panel");
 const fullscreenBackdrop = document.getElementById("fs-backdrop");
 
 let controlClient = null;
@@ -48,6 +50,9 @@ let videoMode = "mjpeg";
 let fullscreen = null;
 let expectedMedia = null;
 let cachedMonitors = null;
+let currentMode = "presetup";
+let currentMonitorIndex = 1;
+let currentCalibData = null;
 
 setStatus("offline");
 if (video) {
@@ -76,11 +81,15 @@ restartBtn.addEventListener("click", () => {
 
 modePresetupBtn.addEventListener("click", () => {
   controlClient?.setMode("presetup");
+  currentMode = "presetup";
+  updateExpectedMedia();
   startAspectRatioPoll();
 });
 
 modeRunBtn.addEventListener("click", () => {
   controlClient?.setMode("run");
+  currentMode = "run";
+  updateExpectedMedia();
   startAspectRatioPoll();
 });
 
@@ -96,6 +105,8 @@ monitorSelect.addEventListener("change", () => {
   const idx = Number.parseInt(monitorSelect.value, 10);
   if (!Number.isNaN(idx)) {
     controlClient?.setMonitor(idx);
+    currentMonitorIndex = idx;
+    updateExpectedMedia();
     startAspectRatioPoll();
   }
 });
@@ -131,6 +142,12 @@ async function bootstrap() {
 
   calibrator = new Calibrator(video, overlay, (step, rect) => {
     controlClient?.sendCalib(step, rect);
+    if (step === "plugin") {
+      currentCalibData = currentCalibData || {};
+      currentCalibData.MonitorIndex = currentMonitorIndex;
+      currentCalibData.PluginAbs = rect;
+      updateExpectedMedia();
+    }
   }, (text) => {
     calibHint.textContent = text;
   }, mjpegImg);
@@ -145,7 +162,10 @@ async function bootstrap() {
     exitButton: fullscreenExit,
     leftToggle: leftPanelToggle,
     rightToggle: rightPanelToggle,
+    closeLeft: closeLeftPanel,
+    closeRight: closeRightPanel,
     backdrop: fullscreenBackdrop,
+    videoSurface: videoWrap,
   });
   fullscreen.setEnabled(app.dataset.auth === "true");
 
@@ -159,10 +179,13 @@ async function bootstrap() {
 
 function applyState(state) {
   updateModeButtons(state.mode || "presetup");
+  currentMode = state.mode || "presetup";
+  currentMonitorIndex = state.monitor || 1;
+  currentCalibData = state.calibData || null;
   inputToggle.checked = Boolean(state.inputEnabled);
   videoMode = state.videoMode || "mjpeg";
   updateVideoButtons(videoMode);
-  expectedMedia = computeExpectedMedia(state, cachedMonitors);
+  expectedMedia = computeExpectedMedia(currentMode, currentMonitorIndex, currentCalibData, cachedMonitors);
   calibrator?.setExpectedSize?.(expectedMedia);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
 }
@@ -337,21 +360,25 @@ function mediaSize(bounds) {
   };
 }
 
-function computeExpectedMedia(state, monitors) {
-  if (!state || !monitors || !Array.isArray(monitors)) {
+function computeExpectedMedia(mode, monitorIndex, calib, monitors) {
+  if (!monitors || !Array.isArray(monitors)) {
     return null;
   }
-  const calib = state.calibData || null;
-  const monitorIndex = calib?.MonitorIndex || state.monitor;
   const monitor = monitors.find((m) => (m.Index ?? m.index) === monitorIndex);
   if (!monitor) return null;
-  if (state.mode === "run" && calib?.PluginAbs?.W && calib?.PluginAbs?.H) {
+  if (mode === "run" && calib?.PluginAbs?.W && calib?.PluginAbs?.H) {
     return { width: calib.PluginAbs.W, height: calib.PluginAbs.H };
   }
   const w = monitor.W ?? monitor.w;
   const h = monitor.H ?? monitor.h;
   if (!w || !h) return null;
   return { width: w, height: h };
+}
+
+function updateExpectedMedia() {
+  expectedMedia = computeExpectedMedia(currentMode, currentMonitorIndex, currentCalibData, cachedMonitors);
+  calibrator?.setExpectedSize?.(expectedMedia);
+  updateWrapAspectRatio();
 }
 
 function buildWsUrl(path) {

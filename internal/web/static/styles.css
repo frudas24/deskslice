@@ -270,7 +270,7 @@ textarea {
 
 .edge-tab {
   position: absolute;
-  top: 14px;
+  top: 50%;
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -283,12 +283,13 @@ textarea {
   backdrop-filter: blur(8px);
   z-index: 4;
   display: none;
+  transform: translateY(-50%);
 }
 
 .fs-enter {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  bottom: 10px;
+  right: 10px;
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -301,6 +302,7 @@ textarea {
   backdrop-filter: blur(8px);
   z-index: 4;
   display: none;
+  opacity: 0.72;
 }
 
 .app[data-auth="true"] .fs-enter {
@@ -314,17 +316,17 @@ body.is-fullscreen .fs-enter {
 }
 
 .edge-tab.left {
-  left: 14px;
+  left: 10px;
 }
 
 .edge-tab.right {
-  right: 14px;
+  right: 10px;
 }
 
 .edge-exit {
   position: absolute;
-  bottom: 14px;
-  right: 14px;
+  top: 10px;
+  left: 50%;
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -337,6 +339,7 @@ body.is-fullscreen .fs-enter {
   backdrop-filter: blur(8px);
   z-index: 4;
   display: none;
+  transform: translateX(-50%);
 }
 
 .fs-backdrop {
@@ -392,12 +395,27 @@ body.is-fullscreen .edge-exit {
   justify-content: center;
 }
 
+body.is-fullscreen .edge-tab,
+body.is-fullscreen .edge-exit {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+body.is-fullscreen.fs-controls-visible .edge-tab,
+body.is-fullscreen.fs-controls-visible .edge-exit,
+body.is-fullscreen.drawer-left-open .edge-tab,
+body.is-fullscreen.drawer-right-open .edge-tab {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 body.is-fullscreen .control-panel {
   position: fixed;
-  left: 14px;
-  top: 14px;
-  bottom: 14px;
-  width: min(380px, calc(100vw - 28px));
+  left: 10px;
+  top: 10px;
+  bottom: 10px;
+  width: min(340px, calc(100vw - 90px));
   padding: 18px;
   background: rgba(253, 250, 244, 0.96);
   border: 1px solid rgba(215, 201, 180, 0.9);
@@ -415,10 +433,10 @@ body.is-fullscreen.drawer-left-open .control-panel {
 
 body.is-fullscreen .typing-panel {
   position: fixed;
-  right: 14px;
-  top: 14px;
-  bottom: 14px;
-  width: min(380px, calc(100vw - 28px));
+  right: 10px;
+  top: 10px;
+  bottom: 10px;
+  width: min(340px, calc(100vw - 90px));
   padding: 14px;
   background: rgba(253, 250, 244, 0.96);
   border: 1px solid rgba(215, 201, 180, 0.9);
@@ -432,4 +450,29 @@ body.is-fullscreen .typing-panel {
 
 body.is-fullscreen.drawer-right-open .typing-panel {
   transform: translateX(0);
+}
+
+.drawer-close {
+  display: none;
+  border: 1px solid var(--panel-border);
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+body.is-fullscreen .drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.is-fullscreen.drawer-left-open #overlay,
+body.is-fullscreen.drawer-right-open #overlay {
+  pointer-events: none;
 }
