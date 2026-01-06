@@ -127,6 +127,32 @@
                   <input type="checkbox" id="debug-overlays">
                   <span>Debug overlays</span>
                 </label>
+                <label class="toggle">
+                  <input type="checkbox" id="edit-calib-rects">
+                  <span>Edit rectangles</span>
+                </label>
+              </div>
+              <div class="calib-edit" id="calib-edit" hidden>
+                <div class="row">
+                  <label class="label" for="calib-edit-target">Target</label>
+                  <select id="calib-edit-target">
+                    <option value="plugin">Plugin</option>
+                    <option value="chat">Chat</option>
+                    <option value="scroll">Scroll</option>
+                  </select>
+                  <label class="label" for="calib-edit-step">Step</label>
+                  <select id="calib-edit-step">
+                    <option value="1">1px</option>
+                    <option value="5" selected>5px</option>
+                    <option value="20">20px</option>
+                  </select>
+                </div>
+                <div class="calib-nudge-grid" aria-label="Nudge rectangle">
+                  <button type="button" class="btn btn-nudge" id="calib-nudge-up" aria-label="Nudge up">↑</button>
+                  <button type="button" class="btn btn-nudge" id="calib-nudge-left" aria-label="Nudge left">←</button>
+                  <button type="button" class="btn btn-nudge" id="calib-nudge-right" aria-label="Nudge right">→</button>
+                  <button type="button" class="btn btn-nudge" id="calib-nudge-down" aria-label="Nudge down">↓</button>
+                </div>
               </div>
               <div class="hint small" id="calib-hint">Draw a rectangle over the video.</div>
             </div>

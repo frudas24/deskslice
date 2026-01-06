@@ -383,6 +383,53 @@ input[type="range"] {
   color: var(--muted);
 }
 
+.calib-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calib-nudge-grid {
+  display: grid;
+  grid-template-columns: 44px 44px 44px;
+  grid-template-rows: 44px 44px 44px;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn.btn-nudge {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#calib-nudge-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#calib-nudge-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#calib-nudge-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+#calib-nudge-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;

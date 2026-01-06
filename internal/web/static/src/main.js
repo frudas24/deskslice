@@ -26,6 +26,14 @@ const setChatBtn = document.getElementById("set-chat");
 const setScrollBtn = document.getElementById("set-scroll");
 const saveCalibBtn = document.getElementById("save-calib");
 const debugOverlaysToggle = document.getElementById("debug-overlays");
+const editCalibToggle = document.getElementById("edit-calib-rects");
+const calibEdit = document.getElementById("calib-edit");
+const calibEditTarget = document.getElementById("calib-edit-target");
+const calibEditStep = document.getElementById("calib-edit-step");
+const calibNudgeUp = document.getElementById("calib-nudge-up");
+const calibNudgeLeft = document.getElementById("calib-nudge-left");
+const calibNudgeRight = document.getElementById("calib-nudge-right");
+const calibNudgeDown = document.getElementById("calib-nudge-down");
 const calibHint = document.getElementById("calib-hint");
 const fxClarity = document.getElementById("fx-clarity");
 const fxClarityValue = document.getElementById("fx-clarity-value");
@@ -163,6 +171,8 @@ modePresetupBtn.addEventListener("click", () => {
   controlClient?.setMode("presetup");
   currentMode = "presetup";
   updateExpectedMedia();
+  syncCalibEditAvailability();
+  calibrator?.setMode?.(currentMode);
   startAspectRatioPoll();
 });
 
@@ -170,6 +180,8 @@ modeRunBtn.addEventListener("click", () => {
   controlClient?.setMode("run");
   currentMode = "run";
   updateExpectedMedia();
+  syncCalibEditAvailability();
+  calibrator?.setMode?.(currentMode);
   startAspectRatioPoll();
 });
 
@@ -246,6 +258,38 @@ debugOverlaysToggle?.addEventListener("change", () => {
   calibrator?.setDebugEnabled?.(debugOverlays);
 });
 
+editCalibToggle?.addEventListener("change", () => {
+  const enabled = Boolean(editCalibToggle.checked);
+  if (calibEdit) {
+    calibEdit.hidden = !enabled;
+  }
+  calibrator?.setEditEnabled?.(enabled);
+  if (enabled) {
+    const target = String(calibEditTarget?.value || "plugin");
+    calibrator?.selectStep?.(target);
+  }
+});
+
+calibEditTarget?.addEventListener("change", () => {
+  const target = String(calibEditTarget.value || "plugin");
+  calibrator?.selectStep?.(target);
+});
+
+function nudgeStep() {
+  const raw = Number.parseInt(calibEditStep?.value || "5", 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 5;
+}
+
+function nudge(dx, dy) {
+  const step = nudgeStep();
+  calibrator?.nudgeSelected?.(dx * step, dy * step);
+}
+
+calibNudgeUp?.addEventListener("click", () => nudge(0, -1));
+calibNudgeLeft?.addEventListener("click", () => nudge(-1, 0));
+calibNudgeRight?.addEventListener("click", () => nudge(1, 0));
+calibNudgeDown?.addEventListener("click", () => nudge(0, 1));
+
 fxClarity?.addEventListener("input", () => {
   postFX.clarity = clampInt(Number.parseInt(fxClarity.value, 10) || 0, 0, 30);
   syncFXUI();
@@ -298,6 +342,11 @@ async function bootstrap() {
     }, (text) => {
       calibHint.textContent = text;
     }, mjpegImg);
+    calibrator.setSelectionListener?.((step) => {
+      if (!calibEditTarget) return;
+      calibEditTarget.value = step;
+    });
+    calibrator.setMode?.(currentMode);
     calibrator.setDebugEnabled?.(debugOverlays);
     calibrator.setCalibData?.(currentCalibData);
     calibrator.setExpectedSize?.(expectedMedia);
@@ -360,9 +409,25 @@ function applyState(state) {
   scrollOverlay = { ...scrollOverlay, ...(state.scroll || {}) };
   updateVideoButtons(videoMode);
   expectedMedia = computeExpectedMedia(currentMode, currentMonitorIndex, currentCalibData, cachedMonitors);
+  syncCalibEditAvailability();
+  calibrator?.setMode?.(currentMode);
   calibrator?.setCalibData?.(currentCalibData);
   calibrator?.setExpectedSize?.(expectedMedia);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
+}
+
+function syncCalibEditAvailability() {
+  const enabled = currentMode === "presetup";
+  if (editCalibToggle) {
+    editCalibToggle.disabled = !enabled;
+    if (!enabled) {
+      editCalibToggle.checked = false;
+      calibrator?.setEditEnabled?.(false);
+      if (calibEdit) {
+        calibEdit.hidden = true;
+      }
+    }
+  }
 }
 
 async function tryAutoBootstrap() {
