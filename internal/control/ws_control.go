@@ -184,7 +184,11 @@ func (s *Server) handlePointerUp(msg Message) error {
 // handleType handles type messages.
 func (s *Server) handleType(text string) error {
 	c := s.session.GetCalib()
-	chatAbs := chatRectAbs(c)
+	pluginAbs, err := s.pluginAbsVirtual(c)
+	if err != nil {
+		return err
+	}
+	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
 	actions := ActionsForType(s.session.InputEnabled(), text, chatAbs)
 	return s.applyActions(actions)
 }
@@ -192,7 +196,11 @@ func (s *Server) handleType(text string) error {
 // handleEnter handles enter messages.
 func (s *Server) handleEnter() error {
 	c := s.session.GetCalib()
-	chatAbs := chatRectAbs(c)
+	pluginAbs, err := s.pluginAbsVirtual(c)
+	if err != nil {
+		return err
+	}
+	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
 	actions := ActionsForEnter(s.session.InputEnabled(), chatAbs)
 	return s.applyActions(actions)
 }
@@ -231,21 +239,10 @@ func (s *Server) handleCalibRect(msg Message) error {
 func (s *Server) mapCoordsWithCalib(xn, yn float64, c calib.Calib) (int, int, string, calib.Rect, error) {
 	mode := s.session.Mode()
 	if mode == session.ModeRun {
-		monitors, err := s.listMonitors()
+		pluginAbs, err := s.pluginAbsVirtual(c)
 		if err != nil {
 			return 0, 0, mode, calib.Rect{}, err
 		}
-		monitorIndex := c.MonitorIndex
-		if monitorIndex <= 0 {
-			monitorIndex = s.session.Monitor()
-		}
-		m, ok := monitor.GetMonitorByIndex(monitors, monitorIndex)
-		if !ok {
-			return 0, 0, mode, calib.Rect{}, fmt.Errorf("monitor %d not found", monitorIndex)
-		}
-		pluginAbs := calib.Normalize(c.PluginAbs)
-		pluginAbs.X += m.X
-		pluginAbs.Y += m.Y
 		x, y := NormToAbsRun(xn, yn, pluginAbs)
 		return x, y, mode, pluginAbs, nil
 	}
@@ -300,13 +297,33 @@ func (s *Server) notifyPipeline(reason string) {
 	}
 }
 
-// chatRectAbs converts the relative chat rect to absolute coordinates.
-func chatRectAbs(c calib.Calib) calib.Rect {
-	plugin := calib.Normalize(c.PluginAbs)
-	chat := calib.Normalize(c.ChatRel)
+// pluginAbsVirtual converts the stored plugin rectangle into absolute virtual-desktop coordinates.
+func (s *Server) pluginAbsVirtual(c calib.Calib) (calib.Rect, error) {
+	monitors, err := s.listMonitors()
+	if err != nil {
+		return calib.Rect{}, err
+	}
+	monitorIndex := c.MonitorIndex
+	if monitorIndex <= 0 {
+		monitorIndex = s.session.Monitor()
+	}
+	m, ok := monitor.GetMonitorByIndex(monitors, monitorIndex)
+	if !ok {
+		return calib.Rect{}, fmt.Errorf("monitor %d not found", monitorIndex)
+	}
+	pluginAbs := calib.Normalize(c.PluginAbs)
+	pluginAbs.X += m.X
+	pluginAbs.Y += m.Y
+	return pluginAbs, nil
+}
+
+// chatRectAbsFromPlugin converts the relative chat rect to absolute coordinates using an absolute plugin rectangle.
+func chatRectAbsFromPlugin(pluginAbs calib.Rect, chatRel calib.Rect) calib.Rect {
+	pluginAbs = calib.Normalize(pluginAbs)
+	chat := calib.Normalize(chatRel)
 	return calib.Rect{
-		X: plugin.X + chat.X,
-		Y: plugin.Y + chat.Y,
+		X: pluginAbs.X + chat.X,
+		Y: pluginAbs.Y + chat.Y,
 		W: chat.W,
 		H: chat.H,
 	}
