@@ -539,14 +539,17 @@ body.is-fullscreen .control-panel {
   bottom: calc(10px + var(--safe-bottom));
   width: min(340px, calc(100vw - 90px));
   padding: 18px;
-  background: rgba(253, 250, 244, 0.96);
-  border: 1px solid rgba(215, 201, 180, 0.9);
+  background: rgba(20, 20, 20, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 18px;
   box-shadow: var(--shadow);
   z-index: 90;
   transform: translateX(calc(-100% - 20px));
   transition: transform 180ms ease;
   overflow: auto;
+  color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
 }
 
 body.is-fullscreen.drawer-left-open .control-panel {
@@ -560,14 +563,60 @@ body.is-fullscreen .typing-panel {
   bottom: calc(10px + var(--safe-bottom));
   width: min(340px, calc(100vw - 90px));
   padding: 14px;
-  background: rgba(253, 250, 244, 0.96);
-  border: 1px solid rgba(215, 201, 180, 0.9);
+  background: rgba(20, 20, 20, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 18px;
   box-shadow: var(--shadow);
   z-index: 90;
   transform: translateX(calc(100% + 20px));
   transition: transform 180ms ease;
   overflow: auto;
+  color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+body.is-fullscreen .control-panel .section-title,
+body.is-fullscreen .typing-panel .section-title,
+body.is-fullscreen .control-panel .label,
+body.is-fullscreen .typing-panel .label,
+body.is-fullscreen .control-panel .toggle,
+body.is-fullscreen .typing-panel .toggle,
+body.is-fullscreen .control-panel .hint,
+body.is-fullscreen .typing-panel .hint {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+body.is-fullscreen .control-panel input[type="password"],
+body.is-fullscreen .control-panel select,
+body.is-fullscreen .control-panel textarea,
+body.is-fullscreen .typing-panel input[type="password"],
+body.is-fullscreen .typing-panel select,
+body.is-fullscreen .typing-panel textarea {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+body.is-fullscreen .control-panel textarea::placeholder,
+body.is-fullscreen .typing-panel textarea::placeholder,
+body.is-fullscreen .control-panel input[type="password"]::placeholder,
+body.is-fullscreen .typing-panel input[type="password"]::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+body.is-fullscreen .control-panel .btn,
+body.is-fullscreen .typing-panel .btn,
+body.is-fullscreen .drawer-close {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+body.is-fullscreen .control-panel .btn.active,
+body.is-fullscreen .typing-panel .btn.active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: transparent;
 }
 
 .fs-tune {
