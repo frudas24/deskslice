@@ -248,16 +248,9 @@ func (s *Server) handleType(text string) error {
 		return nil
 	}
 	c := s.session.GetCalib()
-	pluginAbs, err := s.pluginAbsVirtual(c)
-	if err != nil {
+	if err := s.focusChatInput(c); err != nil {
 		return err
 	}
-	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
-	x, y := centerPoint(chatAbs)
-	if err := s.clickPreserveCursor(x, y); err != nil {
-		return err
-	}
-	time.Sleep(40 * time.Millisecond)
 	return s.injector.TypeUnicode(text)
 }
 
@@ -267,16 +260,9 @@ func (s *Server) handleEnter() error {
 		return nil
 	}
 	c := s.session.GetCalib()
-	pluginAbs, err := s.pluginAbsVirtual(c)
-	if err != nil {
+	if err := s.focusChatInput(c); err != nil {
 		return err
 	}
-	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
-	x, y := centerPoint(chatAbs)
-	if err := s.clickPreserveCursor(x, y); err != nil {
-		return err
-	}
-	time.Sleep(40 * time.Millisecond)
 	return s.injector.Enter()
 }
 
@@ -286,6 +272,17 @@ func (s *Server) handleClearChat() error {
 		return nil
 	}
 	c := s.session.GetCalib()
+	if err := s.focusChatInput(c); err != nil {
+		return err
+	}
+	if err := s.injector.SelectAll(); err != nil {
+		return err
+	}
+	return s.injector.Delete()
+}
+
+// focusChatInput clicks the calibrated chat rectangle and waits for focus to settle before typing destructive keys.
+func (s *Server) focusChatInput(c calib.Calib) error {
 	pluginAbs, err := s.pluginAbsVirtual(c)
 	if err != nil {
 		return err
@@ -299,11 +296,12 @@ func (s *Server) handleClearChat() error {
 	if err := s.clickPreserveCursor(x, y); err != nil {
 		return err
 	}
-	time.Sleep(40 * time.Millisecond)
-	if err := s.injector.SelectAll(); err != nil {
+	time.Sleep(90 * time.Millisecond)
+	if err := s.clickPreserveCursor(x, y); err != nil {
 		return err
 	}
-	return s.injector.Delete()
+	time.Sleep(90 * time.Millisecond)
+	return nil
 }
 
 // handleCalibRect updates calibration state.
