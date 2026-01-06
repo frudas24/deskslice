@@ -1,8 +1,9 @@
 import { login, getState, getMonitors } from "./api.js";
-import { ControlClient, bindPointerEvents } from "./control.js";
+import { ControlClient } from "./control.js";
 import { WebRTCClient } from "./webrtc.js";
 import { Calibrator } from "./calib.js";
 import { bindFullscreen } from "./fullscreen.js";
+import { bindScrollPad } from "./scrollpad.js";
 
 const app = document.querySelector(".app");
 const statusDot = document.getElementById("status-dot");
@@ -31,6 +32,7 @@ const clearChatBtn = document.getElementById("clear-chat");
 const video = document.getElementById("video");
 const mjpegImg = document.getElementById("mjpeg");
 const overlay = document.getElementById("overlay");
+const scrollpad = document.getElementById("scrollpad");
 const videoWrap = document.querySelector(".video-wrap");
 const fullscreenToggle = document.getElementById("toggle-fullscreen");
 const fullscreenToggleInline = document.getElementById("toggle-fullscreen-inline");
@@ -58,6 +60,7 @@ let cachedMonitors = null;
 let currentMode = "presetup";
 let currentMonitorIndex = 1;
 let currentCalibData = null;
+let scrollOverlay = { holdMs: 2500, tickMs: 50, maxDelta: 240 };
 let fsScaleX = 1.0;
 let fsScaleY = 1.0;
 const fsScaleMin = 0.25;
@@ -185,8 +188,13 @@ async function bootstrap() {
   }, mjpegImg);
   calibrator.setExpectedSize?.(expectedMedia);
 
-  bindPointerEvents(overlay, (event) => normalizedPoint(event), (type, id, x, y) => {
-    controlClient?.sendPointer(type, id, x, y);
+  bindScrollPad({
+    overlay,
+    canvas: scrollpad,
+    getPoint: (event) => normalizedPoint(event),
+    getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, scroll: scrollOverlay }),
+    sendPointer: (type, id, x, y) => controlClient?.sendPointer(type, id, x, y),
+    sendWheel: (x, y, wheelX, wheelY) => controlClient?.sendWheel(x, y, wheelX, wheelY),
   });
 
   fullscreen = bindFullscreen({
@@ -218,6 +226,7 @@ function applyState(state) {
   currentCalibData = state.calibData || null;
   inputToggle.checked = Boolean(state.inputEnabled);
   videoMode = state.videoMode || "mjpeg";
+  scrollOverlay = { ...scrollOverlay, ...(state.scroll || {}) };
   updateVideoButtons(videoMode);
   expectedMedia = computeExpectedMedia(currentMode, currentMonitorIndex, currentCalibData, cachedMonitors);
   calibrator?.setExpectedSize?.(expectedMedia);

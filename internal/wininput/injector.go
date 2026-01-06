@@ -12,4 +12,5 @@ type Injector interface {
 	SelectAll() error
 	Delete() error
 	Wheel(delta int) error
+	HWheel(delta int) error
 }

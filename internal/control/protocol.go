@@ -15,6 +15,8 @@ type Message struct {
 	ID      int     `json:"id,omitempty"`
 	X       float64 `json:"x,omitempty"`
 	Y       float64 `json:"y,omitempty"`
+	WheelX  int     `json:"wheelX,omitempty"`
+	WheelY  int     `json:"wheelY,omitempty"`
 	Text    string  `json:"text,omitempty"`
 	Mode    string  `json:"mode,omitempty"`
 	Video   string  `json:"video,omitempty"`

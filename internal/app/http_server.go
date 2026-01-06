@@ -41,6 +41,7 @@ type stateResponse struct {
 	MonitorIndex  int          `json:"monitor"`
 	InputEnabled  bool         `json:"inputEnabled"`
 	VideoMode     string       `json:"videoMode"`
+	Scroll        scrollConfig `json:"scroll"`
 	Calib         calibStatus  `json:"calib"`
 	CalibData     *calib.Calib `json:"calibData,omitempty"`
 	Authenticated bool         `json:"authenticated"`
@@ -50,6 +51,12 @@ type calibStatus struct {
 	Plugin bool `json:"plugin"`
 	Chat   bool `json:"chat"`
 	Scroll bool `json:"scroll"`
+}
+
+type scrollConfig struct {
+	HoldMs   int `json:"holdMs"`
+	TickMs   int `json:"tickMs"`
+	MaxDelta int `json:"maxDelta"`
 }
 
 // handleLogin authenticates the session.
@@ -104,6 +111,7 @@ func (a *App) handleState(w http.ResponseWriter, _ *http.Request) {
 		MonitorIndex:  snap.MonitorIndex,
 		InputEnabled:  snap.InputEnabled,
 		VideoMode:     snap.VideoMode,
+		Scroll:        scrollConfig{HoldMs: a.cfg.ScrollHoldMs, TickMs: a.cfg.ScrollTickMs, MaxDelta: a.cfg.ScrollMaxDelta},
 		Calib:         buildCalibStatus(snap.Calib),
 		CalibData:     &snap.Calib,
 		Authenticated: snap.Authenticated,

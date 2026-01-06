@@ -66,3 +66,9 @@ func (n *NoopInjector) Wheel(delta int) error {
 	_ = delta
 	return ErrUnsupported
 }
+
+// HWheel returns ErrUnsupported.
+func (n *NoopInjector) HWheel(delta int) error {
+	_ = delta
+	return ErrUnsupported
+}

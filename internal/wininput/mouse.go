@@ -54,6 +54,11 @@ func (w *WinInjector) Wheel(delta int) error {
 	return sendMouseInput(win.MOUSEEVENTF_WHEEL, 0, 0, uint32(delta))
 }
 
+// HWheel scrolls horizontally by the provided delta.
+func (w *WinInjector) HWheel(delta int) error {
+	return sendMouseInput(win.MOUSEEVENTF_HWHEEL, 0, 0, uint32(delta))
+}
+
 // mapAbsolute converts screen coordinates to the WinAPI absolute range.
 func mapAbsolute(x, y int) (int32, int32) {
 	vx := win.GetSystemMetrics(win.SM_XVIRTUALSCREEN)

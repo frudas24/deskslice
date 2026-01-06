@@ -72,3 +72,9 @@ func (f *FakeInjector) Wheel(delta int) error {
 	f.Calls = append(f.Calls, Call{Name: "Wheel", Y: delta})
 	return nil
 }
+
+// HWheel records a horizontal mouse wheel delta.
+func (f *FakeInjector) HWheel(delta int) error {
+	f.Calls = append(f.Calls, Call{Name: "HWheel", X: delta})
+	return nil
+}

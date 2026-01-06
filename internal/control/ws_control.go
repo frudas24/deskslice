@@ -105,6 +105,8 @@ func (s *Server) handleMessage(msg Message) error {
 		return s.handlePointerMove(msg)
 	case "up":
 		return s.handlePointerUp(msg)
+	case "wheel":
+		return s.handleWheel(msg)
 	case "type":
 		return s.handleType(msg.Text)
 	case "enter":
@@ -137,6 +139,35 @@ func (s *Server) handleMessage(msg Message) error {
 	default:
 		return nil
 	}
+}
+
+// handleWheel injects mouse wheel events at the provided normalized coordinate.
+func (s *Server) handleWheel(msg Message) error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
+	if msg.WheelX == 0 && msg.WheelY == 0 {
+		return nil
+	}
+	c := s.session.GetCalib()
+	absX, absY, _, _, err := s.mapCoordsWithCalib(msg.X, msg.Y, c)
+	if err != nil {
+		return err
+	}
+	if err := s.injector.MoveAbs(absX, absY); err != nil {
+		return err
+	}
+	if msg.WheelX != 0 {
+		if err := s.injector.HWheel(msg.WheelX); err != nil {
+			return err
+		}
+	}
+	if msg.WheelY != 0 {
+		if err := s.injector.Wheel(msg.WheelY); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // handlePointerDown handles pointer down events.

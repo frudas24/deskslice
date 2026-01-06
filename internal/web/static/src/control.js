@@ -67,6 +67,10 @@ export class ControlClient {
   sendCalib(step, rect) {
     this.send({ t: "calibRect", step, rect });
   }
+
+  sendWheel(x, y, wheelX, wheelY) {
+    this.send({ t: "wheel", x, y, wheelX, wheelY });
+  }
 }
 
 export function bindPointerEvents(target, getPoint, send) {
