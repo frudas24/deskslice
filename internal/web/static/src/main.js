@@ -4,6 +4,7 @@ import { WebRTCClient } from "./webrtc.js";
 import { Calibrator } from "./calib.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindScrollPad } from "./scrollpad.js";
+import { bindPanZoom } from "./panzoom.js";
 
 const app = document.querySelector(".app");
 const statusDot = document.getElementById("status-dot");
@@ -71,6 +72,10 @@ let fsScaleX = 1.0;
 let fsScaleY = 1.0;
 const fsScaleMin = 0.25;
 const fsScaleMax = 4.0;
+let pzScale = 1.0;
+let pzX = 0;
+let pzY = 0;
+let panZoom = null;
 let bootstrapped = false;
 let bootstrapping = false;
 
@@ -84,6 +89,7 @@ document.addEventListener("fullscreenchange", () => {
     syncScrollToggle();
     pointerEnabled = true;
     syncPointerToggle();
+    resetPanZoom();
   }
 });
 
@@ -98,6 +104,7 @@ new MutationObserver(() => {
     syncScrollToggle();
     pointerEnabled = true;
     syncPointerToggle();
+    resetPanZoom();
   }
   lastFullscreenClass = current;
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
@@ -186,6 +193,9 @@ scaleResetBtn?.addEventListener("click", () => resetScale());
 pointerToggleBtn?.addEventListener("click", () => {
   pointerEnabled = !pointerEnabled;
   syncPointerToggle();
+  if (pointerEnabled) {
+    resetPanZoom();
+  }
 });
 
 scrollToggleBtn?.addEventListener("click", () => {
@@ -258,6 +268,14 @@ async function bootstrap() {
     fullscreen.setEnabled(app.dataset.auth === "true");
     fullscreen.showControls?.();
     applySavedScaleOrReset();
+    applyPanZoomVars();
+
+    panZoom = bindPanZoom({
+      target: videoWrap,
+      getEnabled: () => document.body.classList.contains("is-fullscreen") && !pointerEnabled,
+      apply: (evt) => applyPanZoom(evt),
+      onTap: () => fullscreen?.showControls?.(),
+    });
 
     if (videoMode === "mjpeg") {
       startMJPEG();
@@ -588,6 +606,55 @@ function syncPointerToggle() {
     scrollModeEnabled = false;
     syncScrollToggle();
   }
+}
+
+function resetPanZoom() {
+  pzScale = 1.0;
+  pzX = 0;
+  pzY = 0;
+  applyPanZoomVars();
+  panZoom?.reset?.();
+}
+
+function applyPanZoomVars() {
+  if (!videoWrap) return;
+  videoWrap.style.setProperty("--pz-scale", String(pzScale));
+  videoWrap.style.setProperty("--pz-x", `${Math.round(pzX)}px`);
+  videoWrap.style.setProperty("--pz-y", `${Math.round(pzY)}px`);
+}
+
+function applyPanZoom(evt) {
+  if (!evt || !videoWrap) return;
+  if (evt.type === "reset") {
+    resetPanZoom();
+    return;
+  }
+
+  const bounds = evt.bounds || videoWrap.getBoundingClientRect();
+  if (!bounds || bounds.width <= 0 || bounds.height <= 0) return;
+
+  if (evt.type === "pinch") {
+    const ratio = Number(evt.ratio) || 1;
+    const nextScale = clamp(pzScale*ratio, 1.0, 4.0);
+    const scaleChange = pzScale > 0 ? nextScale / pzScale : 1;
+    pzScale = nextScale;
+    pzX += Number(evt.dx || 0);
+    pzY += Number(evt.dy || 0);
+    if (scaleChange !== 1) {
+      pzX *= scaleChange;
+      pzY *= scaleChange;
+    }
+  } else if (evt.type === "pan") {
+    if (pzScale <= 1.01) return;
+    pzX += Number(evt.dx || 0);
+    pzY += Number(evt.dy || 0);
+  }
+
+  const maxX = (pzScale - 1) * bounds.width * 0.5;
+  const maxY = (pzScale - 1) * bounds.height * 0.5;
+  pzX = clamp(pzX, -maxX, maxX);
+  pzY = clamp(pzY, -maxY, maxY);
+  applyPanZoomVars();
 }
 
 function syncScrollToggle() {

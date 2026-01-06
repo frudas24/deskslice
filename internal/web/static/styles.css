@@ -502,7 +502,19 @@ body.is-fullscreen #mjpeg {
 
 body.is-fullscreen.pointer-locked #overlay {
   pointer-events: none;
-  touch-action: auto;
+  touch-action: none;
+}
+
+body.is-fullscreen.pointer-locked .video-wrap {
+  touch-action: none;
+}
+
+body.is-fullscreen.pointer-locked video,
+body.is-fullscreen.pointer-locked #mjpeg {
+  transform: translate3d(var(--pz-x, 0px), var(--pz-y, 0px), 0)
+    scale(var(--pz-scale, 1))
+    scaleX(var(--fs-scale-x, 1))
+    scaleY(var(--fs-scale-y, 1));
 }
 
 body.is-fullscreen .edge-tab,
