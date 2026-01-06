@@ -27,6 +27,10 @@ const setScrollBtn = document.getElementById("set-scroll");
 const saveCalibBtn = document.getElementById("save-calib");
 const debugOverlaysToggle = document.getElementById("debug-overlays");
 const calibHint = document.getElementById("calib-hint");
+const fxClarity = document.getElementById("fx-clarity");
+const fxClarityValue = document.getElementById("fx-clarity-value");
+const fxDenoise = document.getElementById("fx-denoise");
+const fxDenoiseValue = document.getElementById("fx-denoise-value");
 const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
 const sendEnterBtn = document.getElementById("send-enter");
@@ -78,6 +82,7 @@ let pzScale = 1.0;
 let pzX = 0;
 let pzY = 0;
 let panZoom = null;
+let postFX = { clarity: 0, denoise: 0 };
 let bootstrapped = false;
 let bootstrapping = false;
 
@@ -220,6 +225,20 @@ debugOverlaysToggle?.addEventListener("change", () => {
   calibrator?.setDebugEnabled?.(debugOverlays);
 });
 
+fxClarity?.addEventListener("input", () => {
+  postFX.clarity = clampInt(Number.parseInt(fxClarity.value, 10) || 0, 0, 30);
+  syncFXUI();
+  applyPostFX();
+  savePostFXPrefs();
+});
+
+fxDenoise?.addEventListener("input", () => {
+  postFX.denoise = clampInt(Number.parseInt(fxDenoise.value, 10) || 0, 0, 10);
+  syncFXUI();
+  applyPostFX();
+  savePostFXPrefs();
+});
+
 async function bootstrap() {
   if (bootstrapping || bootstrapped) {
     return;
@@ -233,8 +252,10 @@ async function bootstrap() {
     applyState(state);
     loadScalePrefs();
     loadDebugPrefs();
+    loadPostFXPrefs();
     syncPointerToggle();
     syncScrollToggle();
+    syncFXUI();
 
     controlClient = new ControlClient(buildWsUrl("/ws/control"));
     await controlClient.connect();
@@ -280,6 +301,7 @@ async function bootstrap() {
     fullscreen.showControls?.();
     applySavedScaleOrReset();
     applyPanZoomVars();
+    applyPostFX();
 
     panZoom = bindPanZoom({
       target: videoWrap,
@@ -415,11 +437,13 @@ function updatePreviewVisibility() {
   if (videoMode === "mjpeg") {
     mjpegImg.style.display = "block";
     video.style.display = "none";
+    applyPostFX();
     updateWrapAspectRatio();
     return;
   }
   mjpegImg.style.display = "none";
   video.style.display = "block";
+  applyPostFX();
   updateWrapAspectRatio();
 }
 
@@ -478,6 +502,7 @@ function startMJPEG() {
   mjpegImg.addEventListener("error", () => {
     mjpegImg.style.display = "none";
   }, { once: true });
+  applyPostFX();
   startAspectRatioPoll();
 }
 
@@ -485,6 +510,7 @@ function refreshMJPEG() {
   if (!mjpegImg || videoMode !== "mjpeg") return;
   mjpegImg.style.display = "block";
   mjpegImg.src = `/mjpeg/desktop?ts=${Date.now()}`;
+  applyPostFX();
   startAspectRatioPoll();
 }
 
@@ -719,6 +745,60 @@ function saveDebugPrefs() {
   }
 }
 
+function postFXStorageKey() {
+  return `deskslice:postFX:${location.host}`;
+}
+
+function loadPostFXPrefs() {
+  try {
+    const raw = window.localStorage.getItem(postFXStorageKey());
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    const clarity = clampInt(Number(parsed?.clarity) || 0, 0, 30);
+    const denoise = clampInt(Number(parsed?.denoise) || 0, 0, 10);
+    postFX = { clarity, denoise };
+  } catch (_) {
+    postFX = { clarity: 0, denoise: 0 };
+  }
+}
+
+function savePostFXPrefs() {
+  try {
+    window.localStorage.setItem(postFXStorageKey(), JSON.stringify(postFX));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function syncFXUI() {
+  if (fxClarity) fxClarity.value = String(postFX.clarity);
+  if (fxClarityValue) fxClarityValue.textContent = String(postFX.clarity);
+  if (fxDenoise) fxDenoise.value = String(postFX.denoise);
+  if (fxDenoiseValue) fxDenoiseValue.textContent = String(postFX.denoise);
+}
+
+function applyPostFX() {
+  const clarity = clampInt(Number(postFX.clarity) || 0, 0, 30);
+  const denoise = clampInt(Number(postFX.denoise) || 0, 0, 10);
+
+  let filter = "none";
+  if (clarity > 0 || denoise > 0) {
+    const blurPx = denoise * 0.12;
+    const contrast = 1 + clarity * 0.015;
+    const brightness = 1 + clarity * 0.003;
+    const saturate = 1 + clarity * 0.006;
+    const parts = [];
+    if (blurPx > 0) parts.push(`blur(${blurPx.toFixed(2)}px)`);
+    parts.push(`contrast(${contrast.toFixed(3)})`);
+    parts.push(`brightness(${brightness.toFixed(3)})`);
+    parts.push(`saturate(${saturate.toFixed(3)})`);
+    filter = parts.join(" ");
+  }
+
+  if (video) video.style.filter = filter;
+  if (mjpegImg) mjpegImg.style.filter = filter;
+}
+
 function mediaSize(bounds) {
   const mjpegW = mjpegImg?.naturalWidth || 0;
   const mjpegH = mjpegImg?.naturalHeight || 0;
@@ -758,6 +838,10 @@ function buildWsUrl(path) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function clampInt(value, min, max) {
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 document.addEventListener("visibilitychange", () => {

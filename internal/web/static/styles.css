@@ -333,6 +333,17 @@ textarea {
   font-size: 14px;
 }
 
+input[type="range"] {
+  width: 100%;
+}
+
+.fx-value {
+  min-width: 2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .btn {
   border: 1px solid var(--panel-border);
   background: #fff;
@@ -614,6 +625,15 @@ body.is-fullscreen .typing-panel textarea {
   background: rgba(0, 0, 0, 0.22);
   border-color: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.92);
+}
+
+body.is-fullscreen .control-panel input[type="range"],
+body.is-fullscreen .typing-panel input[type="range"] {
+  accent-color: rgba(214, 172, 60, 0.9);
+}
+
+body.is-fullscreen .fx-value {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 body.is-fullscreen .control-panel textarea::placeholder,
