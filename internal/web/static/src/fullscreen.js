@@ -1,11 +1,16 @@
 export function bindFullscreen({
+  toggleButtons,
   toggleButton,
   exitButton,
   leftToggle,
   rightToggle,
   backdrop,
 }) {
-  if (!toggleButton || !exitButton || !leftToggle || !rightToggle || !backdrop) {
+  const toggles = Array.isArray(toggleButtons) ? toggleButtons.filter(Boolean) : [];
+  if (toggleButton) {
+    toggles.push(toggleButton);
+  }
+  if (toggles.length === 0 || !exitButton || !leftToggle || !rightToggle || !backdrop) {
     return {
       setEnabled: () => {},
     };
@@ -13,13 +18,15 @@ export function bindFullscreen({
 
   let enabled = true;
 
-  toggleButton.addEventListener("click", async () => {
-    if (!enabled) return;
-    if (document.fullscreenElement) {
-      await safeExitFullscreen();
-      return;
-    }
-    await safeEnterFullscreen();
+  toggles.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!enabled) return;
+      if (document.fullscreenElement) {
+        await safeExitFullscreen();
+        return;
+      }
+      await safeEnterFullscreen();
+    });
   });
 
   exitButton.addEventListener("click", async () => {
@@ -84,7 +91,9 @@ export function bindFullscreen({
   return {
     setEnabled(next) {
       enabled = Boolean(next);
-      toggleButton.disabled = !enabled;
+      toggles.forEach((btn) => {
+        btn.disabled = !enabled;
+      });
       exitButton.disabled = !enabled;
       leftToggle.disabled = !enabled;
       rightToggle.disabled = !enabled;
@@ -96,4 +105,3 @@ export function bindFullscreen({
     },
   };
 }
-

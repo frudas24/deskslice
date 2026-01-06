@@ -33,6 +33,7 @@ const mjpegImg = document.getElementById("mjpeg");
 const overlay = document.getElementById("overlay");
 const videoWrap = document.querySelector(".video-wrap");
 const fullscreenToggle = document.getElementById("toggle-fullscreen");
+const fullscreenToggleInline = document.getElementById("toggle-fullscreen-inline");
 const fullscreenExit = document.getElementById("exit-fullscreen");
 const leftPanelToggle = document.getElementById("toggle-left-panel");
 const rightPanelToggle = document.getElementById("toggle-right-panel");
@@ -140,7 +141,7 @@ async function bootstrap() {
   });
 
   fullscreen = bindFullscreen({
-    toggleButton: fullscreenToggle,
+    toggleButtons: [fullscreenToggle, fullscreenToggleInline],
     exitButton: fullscreenExit,
     leftToggle: leftPanelToggle,
     rightToggle: rightPanelToggle,

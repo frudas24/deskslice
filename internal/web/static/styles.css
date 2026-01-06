@@ -285,6 +285,34 @@ textarea {
   display: none;
 }
 
+.fs-enter {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(20, 20, 20, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  z-index: 4;
+  display: none;
+}
+
+.app[data-auth="true"] .fs-enter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.is-fullscreen .fs-enter {
+  display: none;
+}
+
 .edge-tab.left {
   left: 14px;
 }
