@@ -34,6 +34,7 @@ const fxDenoiseValue = document.getElementById("fx-denoise-value");
 const perfBattery = document.getElementById("perf-battery");
 const perfBalanced = document.getElementById("perf-balanced");
 const perfCrisp = document.getElementById("perf-crisp");
+const perfReset = document.getElementById("perf-reset");
 const perfHint = document.getElementById("perf-hint");
 const statsLine = document.getElementById("stats-line");
 const typeBox = document.getElementById("typebox");
@@ -262,6 +263,7 @@ fxDenoise?.addEventListener("input", () => {
 perfBattery?.addEventListener("click", () => applyPerfPreset("battery"));
 perfBalanced?.addEventListener("click", () => applyPerfPreset("balanced"));
 perfCrisp?.addEventListener("click", () => applyPerfPreset("crisp"));
+perfReset?.addEventListener("click", () => resetPerfPreset());
 
 async function bootstrap() {
   if (bootstrapping || bootstrapped) {
@@ -903,6 +905,22 @@ async function applyPerfPreset(name) {
   } catch (_) {
     if (perfHint) {
       perfHint.textContent = `Suggested: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality} (edit data/.env to persist)`;
+    }
+  }
+}
+
+async function resetPerfPreset() {
+  if (perfHint) {
+    perfHint.textContent = "Resetting to .env defaults...";
+  }
+  try {
+    const resp = await updateConfig({ reset: true });
+    if (perfHint) {
+      perfHint.textContent = `Applied: MJPEG_INTERVAL_MS=${resp.mjpegIntervalMs}, MJPEG_QUALITY=${resp.mjpegQuality} (runtime defaults)`;
+    }
+  } catch (_) {
+    if (perfHint) {
+      perfHint.textContent = "Reset failed.";
     }
   }
 }

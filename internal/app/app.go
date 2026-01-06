@@ -25,6 +25,7 @@ import (
 type App struct {
 	mu            sync.Mutex
 	cfg           config.Config
+	defaultMJPEG  mjpegDefaults
 	session       *session.Session
 	runner        *ffmpeg.Runner
 	preview       *ffmpeg.Preview
@@ -33,6 +34,11 @@ type App struct {
 	signaling     *signaling.Server
 	control       *control.Server
 	monitors      []monitor.Monitor
+}
+
+type mjpegDefaults struct {
+	intervalMs int
+	quality    int
 }
 
 // New creates a new application with its dependencies wired.
@@ -55,6 +61,10 @@ func New(cfg config.Config, sess *session.Session, runner *ffmpeg.Runner, publis
 		session:   sess,
 		runner:    runner,
 		publisher: publisher,
+		defaultMJPEG: mjpegDefaults{
+			intervalMs: cfg.MJPEGIntervalMs,
+			quality:    cfg.MJPEGQuality,
+		},
 	}
 	if cfg.MJPEGEnabled {
 		interval := time.Duration(cfg.MJPEGIntervalMs) * time.Millisecond
@@ -244,6 +254,11 @@ func (a *App) UpdateMJPEGPreview(intervalMs int, quality int) error {
 	}
 	a.restartPreview(mode, m, opts)
 	return nil
+}
+
+// ResetMJPEGPreview restores MJPEG interval/quality to values loaded from the .env file at startup.
+func (a *App) ResetMJPEGPreview() error {
+	return a.UpdateMJPEGPreview(a.defaultMJPEG.intervalMs, a.defaultMJPEG.quality)
 }
 
 // previewFPS maps the MJPEG publish interval to a sensible capture framerate.

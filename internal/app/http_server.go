@@ -60,6 +60,7 @@ type scrollConfig struct {
 }
 
 type configRequest struct {
+	Reset           bool `json:"reset,omitempty"`
 	MJPEGIntervalMs *int `json:"mjpegIntervalMs,omitempty"`
 	MJPEGQuality    *int `json:"mjpegQuality,omitempty"`
 }
@@ -142,6 +143,18 @@ func (a *App) handleConfig(w http.ResponseWriter, r *http.Request) {
 	var req configRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	if req.Reset {
+		if err := a.ResetMJPEGPreview(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(configResponse{
+			MJPEGIntervalMs: a.cfg.MJPEGIntervalMs,
+			MJPEGQuality:    a.cfg.MJPEGQuality,
+			Applied:         true,
+		})
 		return
 	}
 	interval := a.cfg.MJPEGIntervalMs

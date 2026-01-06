@@ -57,6 +57,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
   - Default is `MJPEG` (more reliable); switch in the UI (Session → `WebRTC`) if you want lower latency.
 - For MJPEG mode, the preview capture FPS is derived from `MJPEG_INTERVAL_MS` (smaller interval = higher FPS and more CPU).
 - Runtime tuning: `POST /api/config` (auth required) accepts `{ "mjpegIntervalMs": <int>, "mjpegQuality": <int> }` and applies it immediately when in MJPEG mode.
+- Reset: `POST /api/config` with `{ "reset": true }` restores MJPEG values loaded from `.env` at server startup.
 
 ## License
 
