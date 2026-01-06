@@ -219,10 +219,7 @@ export class Calibrator {
     if (mediaW <= 0 || mediaH <= 0) {
       return { x: 0, y: 0, width: bounds.width, height: bounds.height };
     }
-    const fit = document.body.classList.contains("is-fullscreen") ? "cover" : "contain";
-    const scale = fit === "cover"
-      ? Math.max(bounds.width / mediaW, bounds.height / mediaH)
-      : Math.min(bounds.width / mediaW, bounds.height / mediaH);
+    const scale = Math.min(bounds.width / mediaW, bounds.height / mediaH);
     const width = mediaW * scale;
     const height = mediaH * scale;
     return { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };

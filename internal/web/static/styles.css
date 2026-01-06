@@ -10,6 +10,10 @@
   --panel: #fdfaf4;
   --panel-border: #d7c9b4;
   --shadow: 0 24px 60px rgba(30, 27, 22, 0.18);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 * {
@@ -288,8 +292,8 @@ textarea {
 
 .fs-enter {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: calc(10px + var(--safe-bottom));
+  right: calc(10px + var(--safe-right));
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -316,16 +320,16 @@ body.is-fullscreen .fs-enter {
 }
 
 .edge-tab.left {
-  left: 10px;
+  left: calc(10px + var(--safe-left));
 }
 
 .edge-tab.right {
-  right: 10px;
+  right: calc(10px + var(--safe-right));
 }
 
 .edge-exit {
   position: absolute;
-  top: 10px;
+  top: calc(10px + var(--safe-top));
   left: 50%;
   padding: 10px 12px;
   border-radius: 999px;
@@ -384,7 +388,7 @@ body.is-fullscreen .video-wrap {
   border-radius: 0;
   width: 100vw;
   height: 100vh;
-  aspect-ratio: auto;
+  aspect-ratio: auto !important;
 }
 
 body.is-fullscreen .hint {
@@ -400,7 +404,7 @@ body.is-fullscreen .edge-exit {
 
 body.is-fullscreen video,
 body.is-fullscreen #mjpeg {
-  object-fit: cover;
+  object-fit: contain;
 }
 
 body.is-fullscreen .edge-tab,
@@ -420,9 +424,9 @@ body.is-fullscreen.drawer-right-open .edge-tab {
 
 body.is-fullscreen .control-panel {
   position: fixed;
-  left: 10px;
-  top: 10px;
-  bottom: 10px;
+  left: calc(10px + var(--safe-left));
+  top: calc(10px + var(--safe-top));
+  bottom: calc(10px + var(--safe-bottom));
   width: min(340px, calc(100vw - 90px));
   padding: 18px;
   background: rgba(253, 250, 244, 0.96);
@@ -441,9 +445,9 @@ body.is-fullscreen.drawer-left-open .control-panel {
 
 body.is-fullscreen .typing-panel {
   position: fixed;
-  right: 10px;
-  top: 10px;
-  bottom: 10px;
+  right: calc(10px + var(--safe-right));
+  top: calc(10px + var(--safe-top));
+  bottom: calc(10px + var(--safe-bottom));
   width: min(340px, calc(100vw - 90px));
   padding: 14px;
   background: rgba(253, 250, 244, 0.96);
