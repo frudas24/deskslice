@@ -89,7 +89,7 @@ func (r *Runner) startLocked(mode string, m monitor.Monitor, plugin calib.Rect, 
 		return 0, nil, err
 	}
 
-	cmd, waitCh, err := startWithFallback(opts.FFmpegPath, args, func() ([]string, error) {
+	cmd, waitCh, err := startWithRetry(opts.FFmpegPath, args, func() ([]string, error) {
 		return buildArgs(mode, m, plugin, opts, port, false)
 	})
 	if err != nil {
@@ -137,12 +137,32 @@ func buildArgs(mode string, m monitor.Monitor, plugin calib.Rect, opts Options, 
 // startCmd launches ffmpeg with the provided args.
 func startCmd(path string, args []string) (*exec.Cmd, error) {
 	cmd := exec.Command(path, args...)
+	configureCmd(cmd)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 	return cmd, nil
+}
+
+// startWithRetry launches ffmpeg and retries with backoff if it exits early.
+func startWithRetry(path string, args []string, fallback func() ([]string, error)) (*exec.Cmd, chan error, error) {
+	var (
+		cmd    *exec.Cmd
+		waitCh chan error
+		err    error
+	)
+	backoff := 500 * time.Millisecond
+	for attempt := 0; attempt < 3; attempt++ {
+		cmd, waitCh, err = startWithFallback(path, args, fallback)
+		if err == nil {
+			return cmd, waitCh, nil
+		}
+		time.Sleep(backoff)
+		backoff *= 2
+	}
+	return nil, nil, err
 }
 
 // startWithFallback launches ffmpeg and falls back if it exits early.
@@ -158,8 +178,6 @@ func startWithFallback(path string, args []string, fallback func() ([]string, er
 
 	exited, exitErr := waitForExit(waitCh, 700*time.Millisecond)
 	if exited {
-		_ = cmd.Process.Kill()
-		<-waitCh
 		fallbackArgs, err := fallback()
 		if err != nil {
 			return nil, nil, err
@@ -175,6 +193,13 @@ func startWithFallback(path string, args []string, fallback func() ([]string, er
 		go func() {
 			waitCh <- cmd.Wait()
 		}()
+		exited, exitErr = waitForExit(waitCh, 700*time.Millisecond)
+		if exited {
+			if exitErr != nil {
+				return nil, nil, fmt.Errorf("ffmpeg exited early: %w", exitErr)
+			}
+			return nil, nil, fmt.Errorf("ffmpeg exited early")
+		}
 	}
 
 	return cmd, waitCh, nil
