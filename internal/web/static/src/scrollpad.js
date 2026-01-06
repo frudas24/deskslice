@@ -99,8 +99,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getMetrics, getContex
       const wheelX = Math.round(nx * eased * maxDelta);
       const wheelY = Math.round(-ny * eased * maxDelta);
       if (wheelX === 0 && wheelY === 0) return;
-      const pos = lastNorm || startNorm;
-      sendWheel?.(pos.x, pos.y, wheelX, wheelY);
+      sendWheel?.(startNorm.x, startNorm.y, wheelX, wheelY);
     }, tickMs);
   };
 
