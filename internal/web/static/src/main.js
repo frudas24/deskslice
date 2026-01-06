@@ -40,6 +40,11 @@ const rightPanelToggle = document.getElementById("toggle-right-panel");
 const closeLeftPanel = document.getElementById("close-left-panel");
 const closeRightPanel = document.getElementById("close-right-panel");
 const fullscreenBackdrop = document.getElementById("fs-backdrop");
+const scaleXMinusBtn = document.getElementById("scale-x-minus");
+const scaleXPlusBtn = document.getElementById("scale-x-plus");
+const scaleYMinusBtn = document.getElementById("scale-y-minus");
+const scaleYPlusBtn = document.getElementById("scale-y-plus");
+const scaleResetBtn = document.getElementById("scale-reset");
 
 let controlClient = null;
 let webrtcClient = null;
@@ -53,11 +58,19 @@ let cachedMonitors = null;
 let currentMode = "presetup";
 let currentMonitorIndex = 1;
 let currentCalibData = null;
+let fsScaleX = 1.0;
+let fsScaleY = 1.0;
 
 document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
   calibrator?.resize();
 });
+
+new MutationObserver(() => {
+  if (document.body.classList.contains("is-fullscreen")) {
+    resetScale();
+  }
+}).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
 setStatus("offline");
 if (video) {
@@ -135,6 +148,12 @@ sendTextBtn.addEventListener("click", () => {
 sendEnterBtn.addEventListener("click", () => controlClient?.sendEnter());
 clearChatBtn.addEventListener("click", () => controlClient?.clearChat());
 
+scaleXMinusBtn?.addEventListener("click", () => adjustScale("x", -0.05));
+scaleXPlusBtn?.addEventListener("click", () => adjustScale("x", 0.05));
+scaleYMinusBtn?.addEventListener("click", () => adjustScale("y", -0.05));
+scaleYPlusBtn?.addEventListener("click", () => adjustScale("y", 0.05));
+scaleResetBtn?.addEventListener("click", () => resetScale());
+
 async function bootstrap() {
   controls.style.display = "flex";
   const [state, monitors] = await Promise.all([getState(), getMonitors()]);
@@ -173,6 +192,8 @@ async function bootstrap() {
     videoSurface: videoWrap,
   });
   fullscreen.setEnabled(app.dataset.auth === "true");
+  fullscreen.showControls?.();
+  resetScale();
 
   if (videoMode === "mjpeg") {
     startMJPEG();
@@ -342,10 +363,55 @@ function contentRect(bounds) {
   if (mediaW <= 0 || mediaH <= 0) {
     return { x: 0, y: 0, width: bounds.width, height: bounds.height };
   }
+  const base = containRect(bounds, mediaW, mediaH);
+  if (!document.body.classList.contains("is-fullscreen")) {
+    return base;
+  }
+  const scaledW = base.width * fsScaleX;
+  const scaledH = base.height * fsScaleY;
+  return {
+    x: base.x + (base.width - scaledW) / 2,
+    y: base.y + (base.height - scaledH) / 2,
+    width: scaledW,
+    height: scaledH,
+  };
+}
+
+function containRect(bounds, mediaW, mediaH) {
   const scale = Math.min(bounds.width / mediaW, bounds.height / mediaH);
   const width = mediaW * scale;
   const height = mediaH * scale;
   return { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };
+}
+
+function adjustScale(axis, delta) {
+  const step = Number(delta) || 0;
+  if (!videoWrap || !document.body.classList.contains("is-fullscreen")) return;
+  if (axis === "x") {
+    fsScaleX = clamp(Math.round((fsScaleX + step) * 20) / 20, 0.5, 1.5);
+  } else {
+    fsScaleY = clamp(Math.round((fsScaleY + step) * 20) / 20, 0.5, 1.5);
+  }
+  applyScale();
+}
+
+function resetScale() {
+  if (!videoWrap) return;
+  const bounds = videoWrap.getBoundingClientRect();
+  const size = mediaSize(bounds);
+  if (!size.width || !size.height) return;
+  const base = containRect(bounds, size.width, size.height);
+  fsScaleX = base.width > 0 ? clamp(bounds.width / base.width, 0.5, 1.5) : 1.0;
+  fsScaleY = base.height > 0 ? clamp(bounds.height / base.height, 0.5, 1.5) : 1.0;
+  fsScaleX = Math.round(fsScaleX * 20) / 20;
+  fsScaleY = Math.round(fsScaleY * 20) / 20;
+  applyScale();
+}
+
+function applyScale() {
+  videoWrap.style.setProperty("--fs-scale-x", String(fsScaleX));
+  videoWrap.style.setProperty("--fs-scale-y", String(fsScaleY));
+  calibrator?.resize();
 }
 
 function mediaSize(bounds) {

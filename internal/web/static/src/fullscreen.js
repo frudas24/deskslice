@@ -89,9 +89,7 @@ export function bindFullscreen({
   });
 
   function syncBackdrop() {
-    const open = document.body.classList.contains("drawer-left-open") ||
-      document.body.classList.contains("drawer-right-open");
-    backdrop.style.display = open ? "block" : "none";
+    backdrop.style.display = "none";
   }
 
   let hideTimer = null;

@@ -222,7 +222,21 @@ export class Calibrator {
     const scale = Math.min(bounds.width / mediaW, bounds.height / mediaH);
     const width = mediaW * scale;
     const height = mediaH * scale;
-    return { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };
+    const base = { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };
+    if (!document.body.classList.contains("is-fullscreen")) {
+      return base;
+    }
+    const styles = getComputedStyle(this.overlay.parentElement);
+    const sx = Number.parseFloat(styles.getPropertyValue("--fs-scale-x")) || 1;
+    const sy = Number.parseFloat(styles.getPropertyValue("--fs-scale-y")) || 1;
+    const scaledW = base.width * sx;
+    const scaledH = base.height * sy;
+    return {
+      x: base.x + (base.width - scaledW) / 2,
+      y: base.y + (base.height - scaledH) / 2,
+      width: scaledW,
+      height: scaledH,
+    };
   }
 
   adjustRect(rect, step, width, height) {

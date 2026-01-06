@@ -112,7 +112,7 @@ video {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #111;
+  background: transparent;
   z-index: 2;
 }
 
@@ -122,7 +122,7 @@ video {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #111;
+  background: transparent;
   z-index: 1;
 }
 
@@ -349,7 +349,7 @@ body.is-fullscreen .fs-enter {
 .fs-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.45);
+  background: transparent;
   backdrop-filter: none;
   z-index: 40;
   display: none;
@@ -405,6 +405,8 @@ body.is-fullscreen .edge-exit {
 body.is-fullscreen video,
 body.is-fullscreen #mjpeg {
   object-fit: contain;
+  transform: scaleX(var(--fs-scale-x, 1)) scaleY(var(--fs-scale-y, 1));
+  transform-origin: center center;
 }
 
 body.is-fullscreen .edge-tab,
@@ -433,7 +435,7 @@ body.is-fullscreen .control-panel {
   border: 1px solid rgba(215, 201, 180, 0.9);
   border-radius: 18px;
   box-shadow: var(--shadow);
-  z-index: 60;
+  z-index: 90;
   transform: translateX(calc(-100% - 20px));
   transition: transform 180ms ease;
   overflow: auto;
@@ -454,10 +456,42 @@ body.is-fullscreen .typing-panel {
   border: 1px solid rgba(215, 201, 180, 0.9);
   border-radius: 18px;
   box-shadow: var(--shadow);
-  z-index: 60;
+  z-index: 90;
   transform: translateX(calc(100% + 20px));
   transition: transform 180ms ease;
   overflow: auto;
+}
+
+.fs-tune {
+  position: absolute;
+  left: 50%;
+  bottom: calc(10px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: none;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(20, 20, 20, 0.45);
+  z-index: 4;
+}
+
+.fs-tune-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+body.is-fullscreen.fs-controls-visible .fs-tune {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 body.is-fullscreen.drawer-right-open .typing-panel {
