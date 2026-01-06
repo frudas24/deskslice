@@ -45,6 +45,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 - Post FX: adjust `Clarity` and `Denoise` sliders (client-side CSS filters). Set both to `0` to disable.
 - Debug overlays: enable `Debug overlays` to see the calibrated rectangles over the stream.
 - Scaling: `H+/H-/V+/V-` and `Reset` adjust the fullscreen fit and are remembered per-host in your browser.
+- Performance presets: `Battery/Balanced/Crisp` apply MJPEG interval/quality at runtime (see `/api/config`).
 
 ## Notes
 
@@ -55,6 +56,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
   - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
   - Default is `MJPEG` (more reliable); switch in the UI (Session → `WebRTC`) if you want lower latency.
 - For MJPEG mode, the preview capture FPS is derived from `MJPEG_INTERVAL_MS` (smaller interval = higher FPS and more CPU).
+- Runtime tuning: `POST /api/config` (auth required) accepts `{ "mjpegIntervalMs": <int>, "mjpegQuality": <int> }` and applies it immediately when in MJPEG mode.
 
 ## License
 
