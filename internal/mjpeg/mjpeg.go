@@ -40,13 +40,12 @@ func (s *Stream) SetMinInterval(d time.Duration) {
 // Publish sends a JPEG frame to all subscribers with throttling.
 func (s *Stream) Publish(jpg []byte) {
 	now := time.Now()
+	s.mu.Lock()
 	if s.minInterval > 0 && now.Sub(s.lastPush) < s.minInterval {
-		s.mu.Lock()
 		s.last = append([]byte(nil), jpg...)
 		s.mu.Unlock()
 		return
 	}
-	s.mu.Lock()
 	frame := append([]byte(nil), jpg...)
 	s.last = frame
 	s.lastPush = now
