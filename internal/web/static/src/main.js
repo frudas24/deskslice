@@ -35,6 +35,7 @@ const perfBattery = document.getElementById("perf-battery");
 const perfBalanced = document.getElementById("perf-balanced");
 const perfCrisp = document.getElementById("perf-crisp");
 const perfHint = document.getElementById("perf-hint");
+const statsLine = document.getElementById("stats-line");
 const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
 const sendEnterBtn = document.getElementById("send-enter");
@@ -89,6 +90,9 @@ let panZoom = null;
 let postFX = { clarity: 0, denoise: 0 };
 let bootstrapped = false;
 let bootstrapping = false;
+let mjpegFPS = null;
+let mjpegLastFrameAt = null;
+let statsTimer = null;
 
 document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
@@ -132,6 +136,9 @@ if (video) {
     updatePreviewVisibility();
     updateWrapAspectRatio();
   });
+}
+if (mjpegImg) {
+  mjpegImg.addEventListener("load", () => noteMJPEGFrame());
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -334,6 +341,7 @@ async function bootstrap() {
     } else {
       await startWebRTCOrFallback();
     }
+    startStatsLoop();
     bootstrapped = true;
   } finally {
     bootstrapping = false;
@@ -536,6 +544,19 @@ function stopMJPEG() {
   if (!mjpegImg) return;
   mjpegImg.src = "";
   mjpegImg.style.display = "none";
+}
+
+function noteMJPEGFrame() {
+  const now = Date.now();
+  if (mjpegLastFrameAt) {
+    const dt = now - mjpegLastFrameAt;
+    if (dt > 0 && dt < 5000) {
+      const fps = 1000 / dt;
+      mjpegFPS = mjpegFPS === null ? fps : mjpegFPS * 0.85 + fps * 0.15;
+    }
+  }
+  mjpegLastFrameAt = now;
+  updateStatsLine();
 }
 
 async function startWebRTCOrFallback() {
@@ -874,6 +895,34 @@ function applyPerfPreset(name) {
   if (perfHint) {
     perfHint.textContent = `Suggested: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality}`;
   }
+}
+
+function startStatsLoop() {
+  if (statsTimer) return;
+  statsTimer = window.setInterval(async () => {
+    if (app.dataset.auth !== "true") return;
+    const start = performance.now();
+    try {
+      await getState();
+      const rtt = Math.round(performance.now() - start);
+      updateStatsLine(rtt);
+    } catch (_) {
+      updateStatsLine();
+    }
+  }, 2000);
+}
+
+function updateStatsLine(rttMs) {
+  if (!statsLine) return;
+  const parts = [];
+  parts.push(`video=${videoMode}`);
+  if (videoMode === "mjpeg" && mjpegFPS !== null) {
+    parts.push(`fps~${mjpegFPS.toFixed(1)}`);
+  }
+  if (Number.isFinite(rttMs)) {
+    parts.push(`api~${rttMs}ms`);
+  }
+  statsLine.textContent = parts.length ? parts.join(" · ") : "—";
 }
 
 function mediaSize(bounds) {
