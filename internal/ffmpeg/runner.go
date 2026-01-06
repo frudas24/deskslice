@@ -4,9 +4,11 @@ package ffmpeg
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,10 +86,12 @@ func (r *Runner) startLocked(mode string, m monitor.Monitor, plugin calib.Rect, 
 		return 0, nil, err
 	}
 
-	args, err := buildArgs(mode, m, plugin, opts, port, true)
+	useD3D11 := opts.CaptureDriver == "" || strings.EqualFold(opts.CaptureDriver, "d3d11grab")
+	args, err := buildArgs(mode, m, plugin, opts, port, useD3D11)
 	if err != nil {
 		return 0, nil, err
 	}
+	log.Printf("ffmpeg: start %s %s", opts.FFmpegPath, strings.Join(args, " "))
 
 	cmd, waitCh, err := startWithRetry(opts.FFmpegPath, args, func() ([]string, error) {
 		return buildArgs(mode, m, plugin, opts, port, false)
@@ -178,10 +182,16 @@ func startWithFallback(path string, args []string, fallback func() ([]string, er
 
 	exited, exitErr := waitForExit(waitCh, 700*time.Millisecond)
 	if exited {
+		if exitErr != nil {
+			log.Printf("ffmpeg: exited early: %v", exitErr)
+		} else {
+			log.Printf("ffmpeg: exited early without error")
+		}
 		fallbackArgs, err := fallback()
 		if err != nil {
 			return nil, nil, err
 		}
+		log.Printf("ffmpeg: fallback %s %s", path, strings.Join(fallbackArgs, " "))
 		cmd, err = startCmd(path, fallbackArgs)
 		if err != nil {
 			if exitErr != nil {
@@ -195,6 +205,11 @@ func startWithFallback(path string, args []string, fallback func() ([]string, er
 		}()
 		exited, exitErr = waitForExit(waitCh, 700*time.Millisecond)
 		if exited {
+			if exitErr != nil {
+				log.Printf("ffmpeg: fallback exited early: %v", exitErr)
+			} else {
+				log.Printf("ffmpeg: fallback exited early without error")
+			}
 			if exitErr != nil {
 				return nil, nil, fmt.Errorf("ffmpeg exited early: %w", exitErr)
 			}

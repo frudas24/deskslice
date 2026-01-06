@@ -14,6 +14,7 @@ const (
 	defaultListenAddr  = "0.0.0.0:8787"
 	defaultDataDir     = "./data"
 	defaultFFmpegPath  = "ffmpeg"
+	defaultCapture     = "gdigrab"
 	defaultFPS         = 30
 	defaultBitrateKbps = 6000
 	defaultMonitorIdx  = 1
@@ -21,26 +22,28 @@ const (
 
 // Config holds runtime configuration values.
 type Config struct {
-	ListenAddr   string
-	UIPassword   string
-	DataDir      string
-	CalibPath    string
-	FFmpegPath   string
-	FPS          int
-	BitrateKbps  int
-	MonitorIndex int
+	ListenAddr    string
+	UIPassword    string
+	DataDir       string
+	CalibPath     string
+	FFmpegPath    string
+	CaptureDriver string
+	FPS           int
+	BitrateKbps   int
+	MonitorIndex  int
 }
 
 // Load reads configuration from ./data/.env and environment variables.
 func Load() (Config, error) {
 	cfg := Config{
-		ListenAddr:   defaultListenAddr,
-		DataDir:      defaultDataDir,
-		CalibPath:    filepath.Join(defaultDataDir, "calib.json"),
-		FFmpegPath:   defaultFFmpegPath,
-		FPS:          defaultFPS,
-		BitrateKbps:  defaultBitrateKbps,
-		MonitorIndex: defaultMonitorIdx,
+		ListenAddr:    defaultListenAddr,
+		DataDir:       defaultDataDir,
+		CalibPath:     filepath.Join(defaultDataDir, "calib.json"),
+		FFmpegPath:    defaultFFmpegPath,
+		CaptureDriver: defaultCapture,
+		FPS:           defaultFPS,
+		BitrateKbps:   defaultBitrateKbps,
+		MonitorIndex:  defaultMonitorIdx,
 	}
 
 	if err := loadEnvFile(filepath.Join(cfg.DataDir, ".env")); err != nil {
@@ -51,6 +54,7 @@ func Load() (Config, error) {
 	cfg.DataDir = envString("DATA_DIR", cfg.DataDir)
 	cfg.CalibPath = envString("CALIB_PATH", filepath.Join(cfg.DataDir, "calib.json"))
 	cfg.FFmpegPath = envString("FFMPEG_PATH", cfg.FFmpegPath)
+	cfg.CaptureDriver = normalizeCaptureDriver(envString("CAPTURE_DRIVER", cfg.CaptureDriver))
 	cfg.UIPassword = strings.TrimSpace(os.Getenv("UI_PASSWORD"))
 
 	fps, err := envInt("FPS", cfg.FPS)
@@ -76,6 +80,16 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// normalizeCaptureDriver ensures a supported capture driver value.
+func normalizeCaptureDriver(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "d3d11grab":
+		return "d3d11grab"
+	default:
+		return "gdigrab"
+	}
 }
 
 // envString returns an env override when present, otherwise a default.

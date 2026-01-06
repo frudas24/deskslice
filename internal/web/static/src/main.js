@@ -115,7 +115,11 @@ function populateMonitors(monitors, activeIndex) {
   monitors.forEach((m) => {
     const opt = document.createElement("option");
     opt.value = String(m.Index ?? m.index);
-    opt.textContent = `Monitor ${m.Index ?? m.index}${m.Primary ? " (primary)" : ""}`;
+    const w = m.W ?? m.w;
+    const h = m.H ?? m.h;
+    const size = w && h ? ` ${w}x${h}` : "";
+    const primary = m.Primary ? " (primary)" : "";
+    opt.textContent = `Monitor ${m.Index ?? m.index}${size}${primary}`;
     monitorSelect.appendChild(opt);
   });
   if (activeIndex) {

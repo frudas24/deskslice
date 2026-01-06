@@ -33,6 +33,7 @@ type Server struct {
 	authFn    func() bool
 	conn      *websocket.Conn
 	peer      *webrtc.PeerConnection
+	pending   []webrtc.ICECandidateInit
 }
 
 // NewServer creates a signaling server with the chosen viewer policy and auth function.
@@ -129,6 +130,7 @@ func (s *Server) acceptConn(conn *websocket.Conn) error {
 		}
 	}
 	s.conn = conn
+	s.pending = nil
 	return nil
 }
 
@@ -190,6 +192,7 @@ func (s *Server) handleOffer(conn *websocket.Conn, peer *webrtc.PeerConnection, 
 	}); err != nil {
 		return err
 	}
+	s.drainICE(peer)
 	answer, err := peer.CreateAnswer(nil)
 	if err != nil {
 		return err
@@ -211,7 +214,25 @@ func (s *Server) handleICE(peer *webrtc.PeerConnection, candidate *webrtc.ICECan
 	if candidate == nil {
 		return nil
 	}
+	if peer.RemoteDescription() == nil {
+		s.pending = append(s.pending, *candidate)
+		return nil
+	}
 	return peer.AddICECandidate(*candidate)
+}
+
+// drainICE adds any queued ICE candidates after the remote description is set.
+func (s *Server) drainICE(peer *webrtc.PeerConnection) {
+	if len(s.pending) == 0 {
+		return
+	}
+	pending := s.pending
+	s.pending = nil
+	for _, candidate := range pending {
+		if err := peer.AddICECandidate(candidate); err != nil {
+			log.Printf("signaling: drain ICE failed: %v", err)
+		}
+	}
 }
 
 // sendTo writes a message to the active connection.

@@ -97,6 +97,7 @@ func logStartup(cfg config.Config) {
 	log.Printf("DeskSlice starting")
 	logEnvStatus(cfg)
 	logFFmpegStatus(cfg.FFmpegPath)
+	log.Printf("capture driver: %s", cfg.CaptureDriver)
 	logListenStatus(cfg.ListenAddr)
 }
 

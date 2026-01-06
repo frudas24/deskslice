@@ -4,6 +4,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/frudas24/deskslice/internal/calib"
@@ -68,6 +69,7 @@ func (a *App) Start() error {
 		return err
 	}
 	a.monitors = monitors
+	logMonitors(monitors)
 
 	c, err := calib.Load(a.cfg.CalibPath)
 	if err != nil {
@@ -95,6 +97,13 @@ func (a *App) Stop() error {
 	return a.runner.Stop()
 }
 
+// logMonitors prints the available monitors for debugging.
+func logMonitors(list []monitor.Monitor) {
+	for _, m := range list {
+		log.Printf("monitor %d: %dx%d @ %d,%d primary=%t", m.Index, m.W, m.H, m.X, m.Y, m.Primary)
+	}
+}
+
 // RestartPipeline restarts ffmpeg and RTP forwarding.
 func (a *App) RestartPipeline(reason string) error {
 	a.mu.Lock()
@@ -116,9 +125,10 @@ func (a *App) RestartPipeline(reason string) error {
 	}
 
 	opts := ffmpeg.Options{
-		FFmpegPath:  a.cfg.FFmpegPath,
-		FPS:         a.cfg.FPS,
-		BitrateKbps: a.cfg.BitrateKbps,
+		FFmpegPath:    a.cfg.FFmpegPath,
+		FPS:           a.cfg.FPS,
+		BitrateKbps:   a.cfg.BitrateKbps,
+		CaptureDriver: a.cfg.CaptureDriver,
 	}
 
 	var (
