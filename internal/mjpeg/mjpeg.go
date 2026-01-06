@@ -155,7 +155,6 @@ func (s *Stream) unsubscribe(ch chan []byte) {
 // writePart writes a single JPEG frame to the multipart response.
 func writePart(w http.ResponseWriter, jpg []byte) error {
 	_, _ = w.Write([]byte("\r\n--" + boundary + "\r\n"))
-	w.Header().Del("Content-Type")
 	_, _ = w.Write([]byte("Content-Type: image/jpeg\r\n"))
 	_, _ = w.Write([]byte("Content-Length: " + strconv.Itoa(len(jpg)) + "\r\n\r\n"))
 	_, err := w.Write(jpg)
