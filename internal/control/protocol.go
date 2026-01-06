@@ -1,3 +1,4 @@
+// Package control handles input protocol and gesture mapping.
 package control
 
 // Rect represents a rectangle sent by the client UI.

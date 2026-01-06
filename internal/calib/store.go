@@ -1,3 +1,4 @@
+// Package calib handles calibration data and storage.
 package calib
 
 import (

@@ -1,3 +1,4 @@
+// Package calib handles calibration data and storage.
 package calib
 
 // Rect describes a rectangle using top-left origin and size.

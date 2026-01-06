@@ -1,3 +1,4 @@
+// Package main runs the commentlint CLI.
 package main
 
 import (

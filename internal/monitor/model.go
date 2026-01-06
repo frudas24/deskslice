@@ -1,3 +1,4 @@
+// Package monitor describes display geometry and enumeration.
 package monitor
 
 // Monitor describes a display and its bounds.

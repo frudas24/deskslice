@@ -1,3 +1,4 @@
+// Package control handles input protocol and gesture mapping.
 package control
 
 // ActionType identifies the kind of input action to execute.

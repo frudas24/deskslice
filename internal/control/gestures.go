@@ -1,3 +1,4 @@
+// Package control handles input protocol and gesture mapping.
 package control
 
 import (

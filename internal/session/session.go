@@ -1,3 +1,4 @@
+// Package session holds runtime state for the active viewer.
 package session
 
 import (

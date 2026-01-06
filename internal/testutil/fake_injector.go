@@ -1,3 +1,4 @@
+// Package testutil provides test helpers.
 package testutil
 
 import "github.com/frudas24/deskslice/internal/wininput"

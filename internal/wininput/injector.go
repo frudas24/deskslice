@@ -1,3 +1,4 @@
+// Package wininput defines Windows input injection interfaces.
 package wininput
 
 // Injector defines the input operations used by the control layer.
