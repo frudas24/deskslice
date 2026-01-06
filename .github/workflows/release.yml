@@ -1,0 +1,42 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build (linux + windows)
+        run: |
+          make build-linux
+          make build-win
+
+      - name: Package
+        run: |
+          set -euxo pipefail
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p release
+          cp dist/linux_x86-64/codex_remote "release/codex_remote_${tag}_linux_x86-64"
+          cp dist/win64/codex_remote.exe "release/codex_remote_${tag}_win64.exe"
+          (cd release && sha256sum * > SHA256SUMS.txt)
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*
+

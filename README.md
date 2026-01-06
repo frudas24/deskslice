@@ -52,6 +52,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 - The server prefers `d3d11grab` and falls back to `gdigrab` if unavailable.
 - The web client is plain HTML/CSS/JS under `internal/web/static/` (no Node build).
 - Only one active viewer is supported; a new connection replaces the previous one.
+- CI/CD: GitHub Actions builds on PR/push and can publish release artifacts when you push a tag like `v0.1.0`.
 - The server runs **one** `ffmpeg` pipeline at a time:
   - `WebRTC` runs `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` (H264→RTP).
   - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
