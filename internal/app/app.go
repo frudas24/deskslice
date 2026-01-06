@@ -121,13 +121,17 @@ func (a *App) RestartPipeline(reason string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	videoMode := a.session.VideoMode()
+
 	a.publisher.StopForwarding()
-	a.publisher.ClosePeer()
 	if err := a.runner.Stop(); err != nil {
 		return err
 	}
 	if a.preview != nil {
 		_ = a.preview.Stop()
+	}
+	if videoMode == session.VideoMJPEG {
+		a.publisher.ClosePeer()
 	}
 
 	mode := a.session.Mode()
@@ -151,7 +155,6 @@ func (a *App) RestartPipeline(reason string) error {
 		port int
 		err  error
 	)
-	videoMode := a.session.VideoMode()
 	if videoMode == session.VideoMJPEG {
 		a.restartPreview(mode, m, opts)
 		return nil
