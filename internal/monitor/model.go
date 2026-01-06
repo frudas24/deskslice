@@ -10,3 +10,13 @@ type Monitor struct {
 	H       int
 	Primary bool
 }
+
+// GetMonitorByIndex returns the monitor matching the 1-based index.
+func GetMonitorByIndex(list []Monitor, idx int) (Monitor, bool) {
+	for _, m := range list {
+		if m.Index == idx {
+			return m, true
+		}
+	}
+	return Monitor{}, false
+}
