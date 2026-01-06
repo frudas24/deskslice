@@ -54,7 +54,6 @@ type calibStatus struct {
 }
 
 type scrollConfig struct {
-	HoldMs   int `json:"holdMs"`
 	TickMs   int `json:"tickMs"`
 	MaxDelta int `json:"maxDelta"`
 }
@@ -111,7 +110,7 @@ func (a *App) handleState(w http.ResponseWriter, _ *http.Request) {
 		MonitorIndex:  snap.MonitorIndex,
 		InputEnabled:  snap.InputEnabled,
 		VideoMode:     snap.VideoMode,
-		Scroll:        scrollConfig{HoldMs: a.cfg.ScrollHoldMs, TickMs: a.cfg.ScrollTickMs, MaxDelta: a.cfg.ScrollMaxDelta},
+		Scroll:        scrollConfig{TickMs: a.cfg.ScrollTickMs, MaxDelta: a.cfg.ScrollMaxDelta},
 		Calib:         buildCalibStatus(snap.Calib),
 		CalibData:     &snap.Calib,
 		Authenticated: snap.Authenticated,

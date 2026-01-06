@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -193,6 +194,7 @@ func (a *App) restartPreview(mode string, m monitor.Monitor, opts ffmpeg.Options
 	if a.preview == nil {
 		return
 	}
+	opts.FPS = previewFPS(a.cfg.MJPEGIntervalMs, opts.FPS)
 	var err error
 	if mode == session.ModeRun {
 		c := a.session.GetCalib()
@@ -203,6 +205,24 @@ func (a *App) restartPreview(mode string, m monitor.Monitor, opts ffmpeg.Options
 	if err != nil {
 		log.Printf("preview: start failed: %v", err)
 	}
+}
+
+// previewFPS maps the MJPEG publish interval to a sensible capture framerate.
+func previewFPS(intervalMs int, def int) int {
+	if def <= 0 {
+		def = 30
+	}
+	if intervalMs <= 0 {
+		return def
+	}
+	fps := int(math.Round(1000.0 / float64(intervalMs)))
+	if fps < 1 {
+		return 1
+	}
+	if fps > 60 {
+		return 60
+	}
+	return fps
 }
 
 // ListMonitors returns the cached monitor list.

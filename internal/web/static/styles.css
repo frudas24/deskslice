@@ -193,6 +193,10 @@ video {
   fill: rgba(255, 255, 255, 0.88);
 }
 
+.edge-icon-btn .scroll-shape {
+  fill: rgba(255, 255, 255, 0.88);
+}
+
 .edge-icon-btn .mouse-slash {
   fill: none;
   stroke: rgba(255, 255, 255, 0.88);
@@ -203,6 +207,11 @@ video {
 
 .edge-icon-btn.is-disabled .mouse-slash {
   opacity: 1;
+}
+
+body.is-fullscreen .edge-icon-btn.right {
+  left: auto;
+  right: calc(10px + var(--safe-right));
 }
 
 body.is-fullscreen .edge-icon-btn {

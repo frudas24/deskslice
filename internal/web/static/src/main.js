@@ -24,6 +24,7 @@ const setPluginBtn = document.getElementById("set-plugin");
 const setChatBtn = document.getElementById("set-chat");
 const setScrollBtn = document.getElementById("set-scroll");
 const saveCalibBtn = document.getElementById("save-calib");
+const debugOverlaysToggle = document.getElementById("debug-overlays");
 const calibHint = document.getElementById("calib-hint");
 const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
@@ -48,6 +49,7 @@ const scaleYMinusBtn = document.getElementById("scale-y-minus");
 const scaleYPlusBtn = document.getElementById("scale-y-plus");
 const scaleResetBtn = document.getElementById("scale-reset");
 const pointerToggleBtn = document.getElementById("toggle-pointer");
+const scrollToggleBtn = document.getElementById("toggle-scroll");
 
 let controlClient = null;
 let webrtcClient = null;
@@ -61,18 +63,25 @@ let cachedMonitors = null;
 let currentMode = "presetup";
 let currentMonitorIndex = 1;
 let currentCalibData = null;
-let scrollOverlay = { holdMs: 2500, tickMs: 50, maxDelta: 240 };
+let scrollOverlay = { tickMs: 50, maxDelta: 240 };
 let pointerEnabled = true;
+let scrollModeEnabled = false;
+let debugOverlays = false;
 let fsScaleX = 1.0;
 let fsScaleY = 1.0;
 const fsScaleMin = 0.25;
 const fsScaleMax = 4.0;
+let bootstrapped = false;
+let bootstrapping = false;
 
 document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
   calibrator?.resize();
   if (document.fullscreenElement) {
     applySavedScaleOrReset();
+  } else {
+    scrollModeEnabled = false;
+    syncScrollToggle();
   }
 });
 
@@ -81,6 +90,10 @@ new MutationObserver(() => {
   const current = document.body.classList.contains("is-fullscreen");
   if (current && !lastFullscreenClass) {
     applySavedScaleOrReset();
+  }
+  if (!current && lastFullscreenClass) {
+    scrollModeEnabled = false;
+    syncScrollToggle();
   }
   lastFullscreenClass = current;
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
@@ -171,59 +184,86 @@ pointerToggleBtn?.addEventListener("click", () => {
   syncPointerToggle();
 });
 
+scrollToggleBtn?.addEventListener("click", () => {
+  if (!pointerEnabled) {
+    return;
+  }
+  scrollModeEnabled = !scrollModeEnabled;
+  syncScrollToggle();
+});
+
+debugOverlaysToggle?.addEventListener("change", () => {
+  debugOverlays = Boolean(debugOverlaysToggle.checked);
+  saveDebugPrefs();
+  calibrator?.setDebugEnabled?.(debugOverlays);
+});
+
 async function bootstrap() {
-  controls.style.display = "flex";
-  const [state, monitors] = await Promise.all([getState(), getMonitors()]);
-  cachedMonitors = monitors;
-  populateMonitors(monitors, state.monitor);
-  applyState(state);
-  loadScalePrefs();
-  syncPointerToggle();
+  if (bootstrapping || bootstrapped) {
+    return;
+  }
+  bootstrapping = true;
+  try {
+    controls.style.display = "flex";
+    const [state, monitors] = await Promise.all([getState(), getMonitors()]);
+    cachedMonitors = monitors;
+    populateMonitors(monitors, state.monitor);
+    applyState(state);
+    loadScalePrefs();
+    loadDebugPrefs();
+    syncPointerToggle();
+    syncScrollToggle();
 
-  controlClient = new ControlClient(buildWsUrl("/ws/control"));
-  await controlClient.connect();
+    controlClient = new ControlClient(buildWsUrl("/ws/control"));
+    await controlClient.connect();
 
-  calibrator = new Calibrator(video, overlay, (step, rect) => {
-    controlClient?.sendCalib(step, rect);
-    if (step === "plugin") {
-      currentCalibData = currentCalibData || {};
-      currentCalibData.MonitorIndex = currentMonitorIndex;
-      currentCalibData.PluginAbs = rect;
-      updateExpectedMedia();
+    calibrator = new Calibrator(video, overlay, (step, rect) => {
+      controlClient?.sendCalib(step, rect);
+      if (step === "plugin") {
+        currentCalibData = currentCalibData || {};
+        currentCalibData.MonitorIndex = currentMonitorIndex;
+        currentCalibData.PluginAbs = rect;
+        updateExpectedMedia();
+      }
+    }, (text) => {
+      calibHint.textContent = text;
+    }, mjpegImg);
+    calibrator.setDebugEnabled?.(debugOverlays);
+    calibrator.setCalibData?.(currentCalibData);
+    calibrator.setExpectedSize?.(expectedMedia);
+
+    bindScrollPad({
+      overlay,
+      canvas: scrollpad,
+      getPoint: (event) => normalizedPoint(event),
+      getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, pointerEnabled, scrollModeEnabled, scroll: scrollOverlay }),
+      sendPointer: (type, id, x, y) => controlClient?.sendPointer(type, id, x, y),
+      sendWheel: (x, y, wheelX, wheelY) => controlClient?.sendWheel(x, y, wheelX, wheelY),
+    });
+
+    fullscreen = bindFullscreen({
+      toggleButtons: [fullscreenToggle, fullscreenToggleInline],
+      exitButton: fullscreenExit,
+      leftToggle: leftPanelToggle,
+      rightToggle: rightPanelToggle,
+      closeLeft: closeLeftPanel,
+      closeRight: closeRightPanel,
+      backdrop: fullscreenBackdrop,
+      videoSurface: videoWrap,
+    });
+    fullscreen.setEnabled(app.dataset.auth === "true");
+    fullscreen.showControls?.();
+    applySavedScaleOrReset();
+
+    if (videoMode === "mjpeg") {
+      startMJPEG();
+      setStatus("mjpeg");
+    } else {
+      await startWebRTCOrFallback();
     }
-  }, (text) => {
-    calibHint.textContent = text;
-  }, mjpegImg);
-  calibrator.setExpectedSize?.(expectedMedia);
-
-  bindScrollPad({
-    overlay,
-    canvas: scrollpad,
-    getPoint: (event) => normalizedPoint(event),
-    getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, pointerEnabled, scroll: scrollOverlay }),
-    sendPointer: (type, id, x, y) => controlClient?.sendPointer(type, id, x, y),
-    sendWheel: (x, y, wheelX, wheelY) => controlClient?.sendWheel(x, y, wheelX, wheelY),
-  });
-
-  fullscreen = bindFullscreen({
-    toggleButtons: [fullscreenToggle, fullscreenToggleInline],
-    exitButton: fullscreenExit,
-    leftToggle: leftPanelToggle,
-    rightToggle: rightPanelToggle,
-    closeLeft: closeLeftPanel,
-    closeRight: closeRightPanel,
-    backdrop: fullscreenBackdrop,
-    videoSurface: videoWrap,
-  });
-  fullscreen.setEnabled(app.dataset.auth === "true");
-  fullscreen.showControls?.();
-  applySavedScaleOrReset();
-
-  if (videoMode === "mjpeg") {
-    startMJPEG();
-    setStatus("mjpeg");
-  } else {
-    await startWebRTCOrFallback();
+    bootstrapped = true;
+  } finally {
+    bootstrapping = false;
   }
 }
 
@@ -237,8 +277,59 @@ function applyState(state) {
   scrollOverlay = { ...scrollOverlay, ...(state.scroll || {}) };
   updateVideoButtons(videoMode);
   expectedMedia = computeExpectedMedia(currentMode, currentMonitorIndex, currentCalibData, cachedMonitors);
+  calibrator?.setCalibData?.(currentCalibData);
   calibrator?.setExpectedSize?.(expectedMedia);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
+}
+
+async function tryAutoBootstrap() {
+  if (app.dataset.auth === "true") {
+    await bootstrap();
+    return;
+  }
+  try {
+    await getState();
+  } catch (err) {
+    if (err?.status === 401) {
+      return;
+    }
+    return;
+  }
+  app.dataset.auth = "true";
+  await bootstrap();
+}
+
+async function resumeConnections() {
+  if (app.dataset.auth !== "true") {
+    return;
+  }
+  if (videoMode === "mjpeg") {
+    refreshMJPEG();
+  }
+  try {
+    const [state, monitors] = await Promise.all([getState(), cachedMonitors ? Promise.resolve(cachedMonitors) : getMonitors()]);
+    cachedMonitors = monitors;
+    populateMonitors(monitors, state.monitor);
+    applyState(state);
+
+    if (!controlClient || !controlClient.ready) {
+      controlClient = new ControlClient(buildWsUrl("/ws/control"));
+      await controlClient.connect();
+    }
+
+    if (videoMode === "mjpeg") {
+      refreshMJPEG();
+      setStatus("mjpeg");
+      return;
+    }
+    await startWebRTCOrFallback();
+  } catch (err) {
+    if (err?.status === 401) {
+      app.dataset.auth = "false";
+      bootstrapped = false;
+      stopMJPEG();
+    }
+  }
 }
 
 function updateModeButtons(mode) {
@@ -354,6 +445,13 @@ function startMJPEG() {
   mjpegImg.addEventListener("error", () => {
     mjpegImg.style.display = "none";
   }, { once: true });
+  startAspectRatioPoll();
+}
+
+function refreshMJPEG() {
+  if (!mjpegImg || videoMode !== "mjpeg") return;
+  mjpegImg.style.display = "block";
+  mjpegImg.src = `/mjpeg/desktop?ts=${Date.now()}`;
   startAspectRatioPoll();
 }
 
@@ -481,6 +579,42 @@ function saveScalePrefs() {
 function syncPointerToggle() {
   if (!pointerToggleBtn) return;
   pointerToggleBtn.classList.toggle("is-disabled", !pointerEnabled);
+  if (!pointerEnabled) {
+    scrollModeEnabled = false;
+    syncScrollToggle();
+  }
+}
+
+function syncScrollToggle() {
+  if (!scrollToggleBtn) return;
+  scrollToggleBtn.classList.toggle("is-disabled", !scrollModeEnabled);
+  if (!pointerEnabled) {
+    scrollToggleBtn.classList.add("is-disabled");
+  }
+}
+
+function debugStorageKey() {
+  return `deskslice:debugOverlays:${location.host}`;
+}
+
+function loadDebugPrefs() {
+  try {
+    const raw = window.localStorage.getItem(debugStorageKey());
+    debugOverlays = raw === "1";
+  } catch (_) {
+    debugOverlays = false;
+  }
+  if (debugOverlaysToggle) {
+    debugOverlaysToggle.checked = debugOverlays;
+  }
+}
+
+function saveDebugPrefs() {
+  try {
+    window.localStorage.setItem(debugStorageKey(), debugOverlays ? "1" : "0");
+  } catch (_) {
+    // ignore
+  }
 }
 
 function mediaSize(bounds) {
@@ -523,3 +657,15 @@ function buildWsUrl(path) {
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    void resumeConnections();
+  }
+});
+
+window.addEventListener("pageshow", () => {
+  void resumeConnections();
+});
+
+void tryAutoBootstrap();

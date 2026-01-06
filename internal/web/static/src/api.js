@@ -21,7 +21,9 @@ export async function logout() {
 export async function getState() {
   const res = await fetch("/api/state");
   if (!res.ok) {
-    throw new Error("state fetch failed");
+    const err = new Error("state fetch failed");
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -29,7 +31,9 @@ export async function getState() {
 export async function getMonitors() {
   const res = await fetch("/api/monitors");
   if (!res.ok) {
-    throw new Error("monitor fetch failed");
+    const err = new Error("monitor fetch failed");
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }

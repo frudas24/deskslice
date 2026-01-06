@@ -21,7 +21,6 @@ const (
 	defaultMJPEGEnabled    = true
 	defaultMJPEGIntervalMs = 120
 	defaultMJPEGQuality    = 60
-	defaultScrollHoldMs    = 2500
 	defaultScrollTickMs    = 50
 	defaultScrollMaxDelta  = 240
 )
@@ -40,7 +39,6 @@ type Config struct {
 	MJPEGEnabled    bool
 	MJPEGIntervalMs int
 	MJPEGQuality    int
-	ScrollHoldMs    int
 	ScrollTickMs    int
 	ScrollMaxDelta  int
 }
@@ -59,7 +57,6 @@ func Load() (Config, error) {
 		MJPEGEnabled:    defaultMJPEGEnabled,
 		MJPEGIntervalMs: defaultMJPEGIntervalMs,
 		MJPEGQuality:    defaultMJPEGQuality,
-		ScrollHoldMs:    defaultScrollHoldMs,
 		ScrollTickMs:    defaultScrollTickMs,
 		ScrollMaxDelta:  defaultScrollMaxDelta,
 	}
@@ -109,15 +106,6 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("MJPEG_QUALITY must be 1-100")
 	}
 	cfg.MJPEGQuality = mjpegQuality
-
-	scrollHold, err := envInt("SCROLL_OVERLAY_HOLD_MS", cfg.ScrollHoldMs)
-	if err != nil {
-		return Config{}, err
-	}
-	if scrollHold < 0 {
-		return Config{}, fmt.Errorf("SCROLL_OVERLAY_HOLD_MS must be >= 0")
-	}
-	cfg.ScrollHoldMs = scrollHold
 
 	scrollTick, err := envInt("SCROLL_OVERLAY_TICK_MS", cfg.ScrollTickMs)
 	if err != nil {

@@ -35,6 +35,13 @@
                 <path class="mouse-slash" d="M5 5l14 14" />
               </svg>
             </button>
+            <button type="button" class="edge-icon-btn right is-disabled" id="toggle-scroll" aria-label="Toggle scroll mode">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path class="scroll-shape" d="M12 3l3 3h-2v5h-2V6H9l3-3Zm0 18l-3-3h2v-5h2v5h2l-3 3Z"/>
+                <path class="scroll-shape" d="M3 12l3-3v2h5v2H6v2l-3-3Zm18 0l-3 3v-2h-5v-2h5V9l3 3Z"/>
+                <path class="mouse-slash" d="M5 5l14 14" />
+              </svg>
+            </button>
             <div class="fs-tune" id="fs-tune">
               <button type="button" class="fs-tune-btn" id="scale-x-minus">H-</button>
               <button type="button" class="fs-tune-btn" id="scale-x-plus">H+</button>
@@ -103,6 +110,12 @@
                 <button type="button" class="btn" id="set-chat">Set chat</button>
                 <button type="button" class="btn" id="set-scroll">Set scroll</button>
                 <button type="button" class="btn primary" id="save-calib">Save</button>
+              </div>
+              <div class="row">
+                <label class="toggle">
+                  <input type="checkbox" id="debug-overlays">
+                  <span>Debug overlays</span>
+                </label>
               </div>
               <div class="hint small" id="calib-hint">Draw a rectangle over the video.</div>
             </div>

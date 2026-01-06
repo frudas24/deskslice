@@ -1,20 +1,13 @@
 export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPointer, sendWheel }) {
   let activeId = null;
   let startNorm = null;
+  let lastNorm = null;
   let startRel = null;
   let lastRel = null;
-  let holdTimer = null;
   let tickTimer = null;
   let dragging = false;
   let scrollActive = false;
   let radius = 90;
-
-  const clearHold = () => {
-    if (holdTimer) {
-      window.clearTimeout(holdTimer);
-      holdTimer = null;
-    }
-  };
 
   const stopTick = () => {
     if (tickTimer) {
@@ -73,14 +66,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     ctx.restore();
   };
 
-  const startScroll = () => {
-    const ctx = getContext?.() || {};
-    if (ctx.mode !== "run") {
-      return;
-    }
-    if (!ctx.inputEnabled) {
-      return;
-    }
+  const startScroll = (ctx) => {
     if (scrollActive || !startNorm || !startRel) {
       return;
     }
@@ -111,7 +97,8 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
       const wheelX = Math.round(nx * eased * maxDelta);
       const wheelY = Math.round(-ny * eased * maxDelta);
       if (wheelX === 0 && wheelY === 0) return;
-      sendWheel?.(startNorm.x, startNorm.y, wheelX, wheelY);
+      const pos = lastNorm || startNorm;
+      sendWheel?.(pos.x, pos.y, wheelX, wheelY);
     }, tickMs);
   };
 
@@ -121,7 +108,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     }
 
     const point = getPoint(event);
-    clearHold();
+    lastNorm = point || lastNorm;
 
     if (scrollActive) {
       stopTick();
@@ -141,6 +128,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     }
     activeId = null;
     startNorm = null;
+    lastNorm = null;
     startRel = null;
     lastRel = null;
     dragging = false;
@@ -155,6 +143,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     }
     activeId = event.pointerId;
     startNorm = point;
+    lastNorm = point;
     const bounds = overlay.getBoundingClientRect();
     startRel = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     lastRel = startRel;
@@ -163,16 +152,8 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
 
     overlay.setPointerCapture(activeId);
 
-    const scroll = ctx.scroll || {};
-    const holdMs = Number(scroll.holdMs);
-    const hold = Number.isFinite(holdMs) ? holdMs : 2500;
-
-    if (ctx.mode === "run" && ctx.inputEnabled && hold >= 0) {
-      if (hold === 0) {
-        startScroll();
-      } else {
-        holdTimer = window.setTimeout(() => startScroll(), hold);
-      }
+    if (ctx.mode === "run" && ctx.inputEnabled && ctx.scrollModeEnabled) {
+      startScroll(ctx);
       return;
     }
 
@@ -186,6 +167,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     }
     const point = getPoint(event);
     if (!point) return;
+    lastNorm = point;
 
     const bounds = overlay.getBoundingClientRect();
     lastRel = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
@@ -197,7 +179,6 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
 
     const moved = startRel ? Math.hypot(lastRel.x - startRel.x, lastRel.y - startRel.y) : 0;
     if (!dragging && moved > 10) {
-      clearHold();
       if (startNorm) {
         sendPointer?.("down", activeId, startNorm.x, startNorm.y);
       }
@@ -228,7 +209,6 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     overlay.removeEventListener("pointermove", onMove);
     overlay.removeEventListener("pointerup", onUp);
     overlay.removeEventListener("pointercancel", onCancel);
-    clearHold();
     stopTick();
     hide();
   };

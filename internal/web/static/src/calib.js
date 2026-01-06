@@ -7,6 +7,7 @@ export class Calibrator {
     this.setHint = setHint;
     this.ctx = overlay.getContext("2d");
     this.active = false;
+    this.debug = false;
     this.step = null;
     this.start = null;
     this.rect = null;
@@ -19,6 +20,52 @@ export class Calibrator {
     };
     this.expectedSize = null;
     this.bind();
+  }
+
+  setDebugEnabled(enabled) {
+    this.debug = Boolean(enabled);
+    this.render();
+  }
+
+  setCalibData(calibData) {
+    if (!calibData || !calibData.PluginAbs) {
+      this.pluginRect = null;
+      this.rects = { plugin: null, chat: null, scroll: null };
+      this.render();
+      return;
+    }
+
+    const plugin = {
+      x: calibData.PluginAbs.X || 0,
+      y: calibData.PluginAbs.Y || 0,
+      w: calibData.PluginAbs.W || 0,
+      h: calibData.PluginAbs.H || 0,
+    };
+    if (plugin.w <= 0 || plugin.h <= 0) {
+      this.pluginRect = null;
+      this.rects = { plugin: null, chat: null, scroll: null };
+      this.render();
+      return;
+    }
+
+    this.pluginRect = plugin;
+    this.rects.plugin = plugin;
+
+    const chatRel = calibData.ChatRel;
+    if (chatRel && (chatRel.W || 0) > 0 && (chatRel.H || 0) > 0) {
+      this.rects.chat = { x: plugin.x + (chatRel.X || 0), y: plugin.y + (chatRel.Y || 0), w: chatRel.W || 0, h: chatRel.H || 0 };
+    } else {
+      this.rects.chat = null;
+    }
+
+    const scrollRel = calibData.ScrollRel;
+    if (scrollRel && (scrollRel.W || 0) > 0 && (scrollRel.H || 0) > 0) {
+      this.rects.scroll = { x: plugin.x + (scrollRel.X || 0), y: plugin.y + (scrollRel.Y || 0), w: scrollRel.W || 0, h: scrollRel.H || 0 };
+    } else {
+      this.rects.scroll = null;
+    }
+
+    this.render();
   }
 
   setExpectedSize(size) {
@@ -143,7 +190,9 @@ export class Calibrator {
 
   render() {
     this.clear();
-    this.drawStored();
+    if (this.active || this.debug) {
+      this.drawStored();
+    }
     if (!this.rect || !this.step) return;
     this.drawRect(this.rect, stepColor(this.step), true, this.step);
   }
