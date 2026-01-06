@@ -500,6 +500,11 @@ body.is-fullscreen #mjpeg {
   transform-origin: center center;
 }
 
+body.is-fullscreen.pointer-locked #overlay {
+  pointer-events: none;
+  touch-action: auto;
+}
+
 body.is-fullscreen .edge-tab,
 body.is-fullscreen .edge-exit {
   opacity: 0;

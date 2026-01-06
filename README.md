@@ -11,10 +11,12 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 ## Highlights
 
 - WebRTC video stream (H264) of the Codex panel.
+- MJPEG preview mode (default, more reliable) with optional WebRTC switching.
 - Touch input mapping (tap, drag-scroll, typing).
 - Presetup mode to select monitor and trace plugin/chat/scroll rectangles.
 - Run mode with a cropped stream to the Codex panel only.
 - Simple password gate via `.env`.
+- Fullscreen mobile UX with side drawers, scaling controls, and input/scroll toggles.
 
 ## Requirements
 
@@ -35,6 +37,14 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
    - Linux: `dist/linux_x86-64/codex_remote`
 6. Open `http://<host>:8787` on your phone and log in.
 
+## UI Tips
+
+- Fullscreen: tap the video to show/hide the overlay controls; use `Menu` and `Chat` drawers.
+- Mouse lock: in fullscreen, the mouse icon toggles whether touches send input; when locked, native mobile gestures (pan/zoom) work.
+- Scroll mode: in fullscreen, the scroll icon enables a joystick-style scroll overlay (horizontal + vertical).
+- Debug overlays: enable `Debug overlays` to see the calibrated rectangles over the stream.
+- Scaling: `H+/H-/V+/V-` and `Reset` adjust the fullscreen fit and are remembered per-host in your browser.
+
 ## Notes
 
 - The server prefers `d3d11grab` and falls back to `gdigrab` if unavailable.
@@ -43,6 +53,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
   - `WebRTC` runs `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` (H264→RTP).
   - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
   - Default is `MJPEG` (more reliable); switch in the UI (Session → `WebRTC`) if you want lower latency.
+- For MJPEG mode, the preview capture FPS is derived from `MJPEG_INTERVAL_MS` (smaller interval = higher FPS and more CPU).
 
 ## License
 

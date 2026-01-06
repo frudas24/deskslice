@@ -82,6 +82,8 @@ document.addEventListener("fullscreenchange", () => {
   } else {
     scrollModeEnabled = false;
     syncScrollToggle();
+    pointerEnabled = true;
+    syncPointerToggle();
   }
 });
 
@@ -94,6 +96,8 @@ new MutationObserver(() => {
   if (!current && lastFullscreenClass) {
     scrollModeEnabled = false;
     syncScrollToggle();
+    pointerEnabled = true;
+    syncPointerToggle();
   }
   lastFullscreenClass = current;
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
@@ -579,6 +583,7 @@ function saveScalePrefs() {
 function syncPointerToggle() {
   if (!pointerToggleBtn) return;
   pointerToggleBtn.classList.toggle("is-disabled", !pointerEnabled);
+  document.body.classList.toggle("pointer-locked", document.body.classList.contains("is-fullscreen") && !pointerEnabled);
   if (!pointerEnabled) {
     scrollModeEnabled = false;
     syncScrollToggle();
