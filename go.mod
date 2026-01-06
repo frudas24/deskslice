@@ -3,6 +3,7 @@ module github.com/frudas24/deskslice
 go 1.25.4
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/pion/interceptor v0.1.42
 	github.com/pion/rtp v1.9.0
