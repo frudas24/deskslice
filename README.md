@@ -59,7 +59,16 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 - For MJPEG mode, the preview capture FPS is derived from `MJPEG_INTERVAL_MS` (smaller interval = higher FPS and more CPU).
 - Runtime tuning: `POST /api/config` (auth required) accepts `{ "mjpegIntervalMs": <int>, "mjpegQuality": <int> }` and applies it immediately when in MJPEG mode.
 - Reset: `POST /api/config` with `{ "reset": true }` restores MJPEG values loaded from `.env` at server startup.
+- Warning: the `Clear` button sends destructive keystrokes (Select All + Delete) to the host; only use it when the chat rectangle is correctly calibrated and the cursor focus is on the intended input.
 
 ## License
 
 GPL-3.0-only. See `LICENSE`.
+
+## Roadmap
+
+Possible future streaming modes (to reduce CPU usage and/or improve reliability vs MJPEG):
+
+- HLS / LL-HLS (HTTP) for broad browser support (higher latency than WebRTC).
+- MPEG-TS over WebSocket (JSMpeg-style) for low-latency browser playback (CPU-heavy client decode).
+- RTSP for low-latency viewing via external apps (not browser-native).
