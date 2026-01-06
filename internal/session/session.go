@@ -47,7 +47,7 @@ func New(password string) *Session {
 		password:     password,
 		inputEnabled: true,
 		mode:         ModePresetup,
-		videoMode:    VideoWebRTC,
+		videoMode:    VideoMJPEG,
 	}
 }
 
@@ -136,7 +136,7 @@ func (s *Session) VideoMode() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.videoMode == "" {
-		return VideoWebRTC
+		return VideoMJPEG
 	}
 	return s.videoMode
 }

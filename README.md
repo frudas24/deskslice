@@ -42,7 +42,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 - The server runs **one** `ffmpeg` pipeline at a time:
   - `WebRTC` runs `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` (H264→RTP).
   - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
-  - Switch in the UI (Session → `WebRTC` / `MJPEG`) to avoid running both.
+  - Default is `MJPEG` (more reliable); switch in the UI (Session → `WebRTC`) if you want lower latency.
 
 ## License
 

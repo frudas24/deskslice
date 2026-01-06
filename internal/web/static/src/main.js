@@ -36,7 +36,7 @@ let webrtcClient = null;
 let calibrator = null;
 let aspectPollTimer = null;
 let lastWrapAspect = "";
-let videoMode = "webrtc";
+let videoMode = "mjpeg";
 
 setStatus("offline");
 if (video) {
@@ -137,7 +137,7 @@ async function bootstrap() {
 function applyState(state) {
   updateModeButtons(state.mode || "presetup");
   inputToggle.checked = Boolean(state.inputEnabled);
-  videoMode = state.videoMode || "webrtc";
+  videoMode = state.videoMode || "mjpeg";
   updateVideoButtons(videoMode);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
 }

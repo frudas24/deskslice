@@ -59,6 +59,8 @@ func New(cfg config.Config, sess *session.Session, runner *ffmpeg.Runner, publis
 		interval := time.Duration(cfg.MJPEGIntervalMs) * time.Millisecond
 		app.previewStream = mjpeg.NewStream(interval)
 		app.preview = ffmpeg.NewPreview(app.previewStream, cfg.MJPEGQuality)
+	} else {
+		sess.SetVideoMode(session.VideoWebRTC)
 	}
 
 	app.signaling = signaling.NewServer(publisher, policy, sess.IsAuthenticated)
