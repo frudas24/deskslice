@@ -30,6 +30,8 @@ type Preview struct {
 	closed  bool
 	path    string
 	args    []string
+	loopID  int
+	stopCh  chan struct{}
 }
 
 // NewPreview returns a preview pipeline bound to the given MJPEG stream.
@@ -58,6 +60,7 @@ func (p *Preview) Stop() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.closed = true
+	p.stopLoopLocked()
 	return p.stopLocked()
 }
 
@@ -66,6 +69,7 @@ func (p *Preview) start(m monitor.Monitor, plugin calib.Rect, opts Options, crop
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.closed = false
+	p.stopLoopLocked()
 	if err := p.stopLocked(); err != nil {
 		return err
 	}
@@ -90,12 +94,20 @@ func (p *Preview) start(m monitor.Monitor, plugin calib.Rect, opts Options, crop
 	p.args = args
 	p.w = outW
 	p.h = outH
+	p.loopID++
+	p.stopCh = make(chan struct{})
+	loopID := p.loopID
+	stopCh := p.stopCh
+	stream := p.stream
+	quality := p.quality
+	width := p.w
+	height := p.h
 
 	log.Printf("ffmpeg: preview %s %s", p.path, strings.Join(args, " "))
 	if err := p.startProcessLocked(); err != nil {
 		return err
 	}
-	go p.loop()
+	go p.loop(loopID, stopCh, stream, quality, width, height)
 	return nil
 }
 
@@ -130,33 +142,43 @@ func (p *Preview) stopLocked() error {
 }
 
 // loop reads raw frames and publishes them to the MJPEG stream.
-func (p *Preview) loop() {
-	raw := make([]byte, p.w*p.h*3)
+func (p *Preview) loop(loopID int, stopCh <-chan struct{}, stream *mjpeg.Stream, quality, width, height int) {
+	raw := make([]byte, width*height*3)
 	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+		}
 		p.mu.Lock()
 		stdout := p.stdout
-		closed := p.closed
+		closed := p.closed || loopID != p.loopID
 		p.mu.Unlock()
 		if closed || stdout == nil {
 			return
 		}
 		if _, err := io.ReadFull(stdout, raw); err != nil {
-			if !p.handleReadError(err) {
+			if !p.handleReadError(err, loopID, stopCh) {
 				return
 			}
 			continue
 		}
-		if p.stream != nil {
-			jpg := mjpeg.EncodeRGBToJPEG(raw, p.w, p.h, p.quality)
-			p.stream.Publish(jpg)
+		if stream != nil {
+			jpg := mjpeg.EncodeRGBToJPEG(raw, width, height, quality)
+			stream.Publish(jpg)
 		}
 	}
 }
 
 // handleReadError restarts ffmpeg after a read failure.
-func (p *Preview) handleReadError(err error) bool {
+func (p *Preview) handleReadError(err error, loopID int, stopCh <-chan struct{}) bool {
+	select {
+	case <-stopCh:
+		return false
+	default:
+	}
 	p.mu.Lock()
-	if p.closed {
+	if p.closed || loopID != p.loopID {
 		p.mu.Unlock()
 		return false
 	}
@@ -167,7 +189,7 @@ func (p *Preview) handleReadError(err error) bool {
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.closed {
+	if p.closed || loopID != p.loopID {
 		return false
 	}
 	if err := p.stopLocked(); err != nil {
@@ -179,4 +201,13 @@ func (p *Preview) handleReadError(err error) bool {
 		return false
 	}
 	return true
+}
+
+// stopLoopLocked signals the current preview loop to stop.
+func (p *Preview) stopLoopLocked() {
+	if p.stopCh == nil {
+		return
+	}
+	close(p.stopCh)
+	p.stopCh = nil
 }
