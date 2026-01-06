@@ -45,6 +45,16 @@ func NewPreview(stream *mjpeg.Stream, quality int) *Preview {
 	}
 }
 
+// SetQuality updates the JPEG quality used for subsequent MJPEG frames.
+func (p *Preview) SetQuality(quality int) {
+	if quality <= 0 || quality > 100 {
+		return
+	}
+	p.mu.Lock()
+	p.quality = quality
+	p.mu.Unlock()
+}
+
 // StartPresetup starts a full-screen MJPEG preview for the selected monitor.
 func (p *Preview) StartPresetup(m monitor.Monitor, opts Options) error {
 	return p.start(m, calib.Rect{}, opts, false)

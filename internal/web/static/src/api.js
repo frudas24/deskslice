@@ -37,3 +37,17 @@ export async function getMonitors() {
   }
   return res.json();
 }
+
+export async function updateConfig(payload) {
+  const res = await fetch("/api/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) {
+    const err = new Error("config update failed");
+    err.status = res.status;
+    throw err;
+  }
+  return res.json().catch(() => ({}));
+}

@@ -22,6 +22,7 @@ func (a *App) RegisterRoutes(mux *http.ServeMux, staticDir string) {
 	mux.HandleFunc("/logout", a.handleLogout)
 	mux.HandleFunc("/api/monitors", a.handleMonitors)
 	mux.HandleFunc("/api/state", a.handleState)
+	mux.HandleFunc("/api/config", a.handleConfig)
 	mux.Handle("/ws/signal", a.Signaling())
 	mux.Handle("/ws/control", a.Control())
 	mux.HandleFunc("/favicon.ico", handleFavicon)
@@ -56,6 +57,17 @@ type calibStatus struct {
 type scrollConfig struct {
 	TickMs   int `json:"tickMs"`
 	MaxDelta int `json:"maxDelta"`
+}
+
+type configRequest struct {
+	MJPEGIntervalMs *int `json:"mjpegIntervalMs,omitempty"`
+	MJPEGQuality    *int `json:"mjpegQuality,omitempty"`
+}
+
+type configResponse struct {
+	MJPEGIntervalMs int  `json:"mjpegIntervalMs"`
+	MJPEGQuality    int  `json:"mjpegQuality"`
+	Applied         bool `json:"applied"`
 }
 
 // handleLogin authenticates the session.
@@ -116,6 +128,39 @@ func (a *App) handleState(w http.ResponseWriter, _ *http.Request) {
 		Authenticated: snap.Authenticated,
 	}
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// handleConfig updates runtime settings for the active session.
+func (a *App) handleConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.requireAuth(w) {
+		return
+	}
+	var req configRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	interval := a.cfg.MJPEGIntervalMs
+	quality := a.cfg.MJPEGQuality
+	if req.MJPEGIntervalMs != nil {
+		interval = *req.MJPEGIntervalMs
+	}
+	if req.MJPEGQuality != nil {
+		quality = *req.MJPEGQuality
+	}
+	if err := a.UpdateMJPEGPreview(interval, quality); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(configResponse{
+		MJPEGIntervalMs: a.cfg.MJPEGIntervalMs,
+		MJPEGQuality:    a.cfg.MJPEGQuality,
+		Applied:         true,
+	})
 }
 
 // requireAuth returns false and writes an error if the session is not authenticated.

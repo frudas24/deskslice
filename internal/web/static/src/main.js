@@ -1,4 +1,4 @@
-import { login, getState, getMonitors } from "./api.js";
+import { login, getState, getMonitors, updateConfig } from "./api.js";
 import { ControlClient } from "./control.js";
 import { WebRTCClient } from "./webrtc.js";
 import { Calibrator } from "./calib.js";
@@ -875,7 +875,7 @@ function applyPostFX() {
   if (mjpegImg) mjpegImg.style.filter = filter;
 }
 
-function applyPerfPreset(name) {
+async function applyPerfPreset(name) {
   let preset = { clarity: 0, denoise: 0, intervalMs: 120, quality: 80 };
   switch (name) {
     case "battery":
@@ -893,7 +893,17 @@ function applyPerfPreset(name) {
   applyPostFX();
   savePostFXPrefs();
   if (perfHint) {
-    perfHint.textContent = `Suggested: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality}`;
+    perfHint.textContent = `Applying: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality}`;
+  }
+  try {
+    const resp = await updateConfig({ mjpegIntervalMs: preset.intervalMs, mjpegQuality: preset.quality });
+    if (perfHint) {
+      perfHint.textContent = `Applied: MJPEG_INTERVAL_MS=${resp.mjpegIntervalMs ?? preset.intervalMs}, MJPEG_QUALITY=${resp.mjpegQuality ?? preset.quality} (runtime)`;
+    }
+  } catch (_) {
+    if (perfHint) {
+      perfHint.textContent = `Suggested: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality} (edit data/.env to persist)`;
+    }
   }
 }
 

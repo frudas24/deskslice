@@ -207,6 +207,45 @@ func (a *App) restartPreview(mode string, m monitor.Monitor, opts ffmpeg.Options
 	}
 }
 
+// UpdateMJPEGPreview updates MJPEG interval/quality and restarts the preview pipeline when active.
+func (a *App) UpdateMJPEGPreview(intervalMs int, quality int) error {
+	if intervalMs < 16 || intervalMs > 1000 {
+		return fmt.Errorf("mjpegIntervalMs must be 16-1000")
+	}
+	if quality <= 0 || quality > 100 {
+		return fmt.Errorf("mjpegQuality must be 1-100")
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.cfg.MJPEGIntervalMs = intervalMs
+	a.cfg.MJPEGQuality = quality
+	if a.previewStream != nil {
+		a.previewStream.SetMinInterval(time.Duration(intervalMs) * time.Millisecond)
+	}
+	if a.preview != nil {
+		a.preview.SetQuality(quality)
+	}
+
+	if a.session.VideoMode() != session.VideoMJPEG {
+		return nil
+	}
+	mode := a.session.Mode()
+	m, ok := monitor.GetMonitorByIndex(a.monitors, a.session.Monitor())
+	if !ok {
+		return fmt.Errorf("monitor %d not found", a.session.Monitor())
+	}
+	opts := ffmpeg.Options{
+		FFmpegPath:    a.cfg.FFmpegPath,
+		FPS:           a.cfg.FPS,
+		BitrateKbps:   a.cfg.BitrateKbps,
+		CaptureDriver: a.cfg.CaptureDriver,
+	}
+	a.restartPreview(mode, m, opts)
+	return nil
+}
+
 // previewFPS maps the MJPEG publish interval to a sensible capture framerate.
 func previewFPS(intervalMs int, def int) int {
 	if def <= 0 {
