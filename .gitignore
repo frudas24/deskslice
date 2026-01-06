@@ -18,5 +18,6 @@ dist/
 .golangci-cache/
 
 # Runtime state (per TODO)
-data/
+data/*
+!data/.env.sample
 third_party/ffmpeg/win/ffmpeg.exe
