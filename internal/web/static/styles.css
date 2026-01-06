@@ -280,7 +280,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   z-index: 4;
   display: none;
   transform: translateY(-50%);
@@ -299,7 +299,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   z-index: 4;
   display: none;
   opacity: 0.72;
@@ -312,7 +312,7 @@ textarea {
 }
 
 body.is-fullscreen .fs-enter {
-  display: none;
+  display: none !important;
 }
 
 .edge-tab.left {
@@ -336,7 +336,7 @@ body.is-fullscreen .fs-enter {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   z-index: 4;
   display: none;
   transform: translateX(-50%);
@@ -346,7 +346,7 @@ body.is-fullscreen .fs-enter {
   position: fixed;
   inset: 0;
   background: rgba(10, 10, 10, 0.45);
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
   z-index: 40;
   display: none;
 }
@@ -382,6 +382,9 @@ body.is-fullscreen .video-wrap {
   position: fixed;
   inset: 0;
   border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
 }
 
 body.is-fullscreen .hint {
@@ -393,6 +396,11 @@ body.is-fullscreen .edge-exit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+body.is-fullscreen video,
+body.is-fullscreen #mjpeg {
+  object-fit: cover;
 }
 
 body.is-fullscreen .edge-tab,
