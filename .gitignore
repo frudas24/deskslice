@@ -19,3 +19,4 @@ dist/
 
 # Runtime state (per TODO)
 data/
+third_party/ffmpeg/win/ffmpeg.exe
