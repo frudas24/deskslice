@@ -60,16 +60,24 @@ let currentMonitorIndex = 1;
 let currentCalibData = null;
 let fsScaleX = 1.0;
 let fsScaleY = 1.0;
+const fsScaleMin = 0.25;
+const fsScaleMax = 4.0;
 
 document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
   calibrator?.resize();
-});
-
-new MutationObserver(() => {
-  if (document.body.classList.contains("is-fullscreen")) {
+  if (document.fullscreenElement) {
     resetScale();
   }
+});
+
+let lastFullscreenClass = document.body.classList.contains("is-fullscreen");
+new MutationObserver(() => {
+  const current = document.body.classList.contains("is-fullscreen");
+  if (current && !lastFullscreenClass) {
+    resetScale();
+  }
+  lastFullscreenClass = current;
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
 setStatus("offline");
@@ -388,9 +396,9 @@ function adjustScale(axis, delta) {
   const step = Number(delta) || 0;
   if (!videoWrap || !document.body.classList.contains("is-fullscreen")) return;
   if (axis === "x") {
-    fsScaleX = clamp(Math.round((fsScaleX + step) * 20) / 20, 0.5, 1.5);
+    fsScaleX = clamp(Math.round((fsScaleX + step) * 20) / 20, fsScaleMin, fsScaleMax);
   } else {
-    fsScaleY = clamp(Math.round((fsScaleY + step) * 20) / 20, 0.5, 1.5);
+    fsScaleY = clamp(Math.round((fsScaleY + step) * 20) / 20, fsScaleMin, fsScaleMax);
   }
   applyScale();
 }
@@ -401,8 +409,8 @@ function resetScale() {
   const size = mediaSize(bounds);
   if (!size.width || !size.height) return;
   const base = containRect(bounds, size.width, size.height);
-  fsScaleX = base.width > 0 ? clamp(bounds.width / base.width, 0.5, 1.5) : 1.0;
-  fsScaleY = base.height > 0 ? clamp(bounds.height / base.height, 0.5, 1.5) : 1.0;
+  fsScaleX = base.width > 0 ? clamp(bounds.width / base.width, fsScaleMin, fsScaleMax) : 1.0;
+  fsScaleY = base.height > 0 ? clamp(bounds.height / base.height, fsScaleMin, fsScaleMax) : 1.0;
   fsScaleX = Math.round(fsScaleX * 20) / 20;
   fsScaleY = Math.round(fsScaleY * 20) / 20;
   applyScale();
