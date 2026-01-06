@@ -59,19 +59,22 @@ export class WebRTCClient {
     this.pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         this.video.srcObject = event.streams[0];
+        this.video.play().catch(() => {});
         this.setStatus("streaming");
       }
     };
     this.pc.onicecandidate = (event) => {
-      if (event.candidate && this.ws) {
+      if (event.candidate && this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ t: "ice", candidate: event.candidate }));
       }
     };
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
     await waitForIceGathering(this.pc);
-    if (this.ws) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ t: "offer", sdp: this.pc.localDescription.sdp }));
+    } else {
+      this.setStatus("offline");
     }
   }
 

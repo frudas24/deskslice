@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/frudas24/deskslice/internal/app"
@@ -25,6 +28,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	logStartup(cfg)
 
 	sess := session.New(cfg.UIPassword)
 	runner := ffmpeg.NewRunner()
@@ -39,7 +43,7 @@ func run() error {
 		return err
 	}
 
-	appInstance, err := app.New(cfg, sess, runner, publisher, injector, signaling.ViewerReject)
+	appInstance, err := app.New(cfg, sess, runner, publisher, injector, signaling.ViewerReplace)
 	if err != nil {
 		return err
 	}
@@ -81,4 +85,85 @@ func run() error {
 func logFatal(err error) {
 	log.Printf("fatal: %v", err)
 	os.Exit(1)
+}
+
+// logStartup prints startup checks and connection info.
+func logStartup(cfg config.Config) {
+	log.Printf("DeskSlice starting")
+	logEnvStatus(cfg)
+	logFFmpegStatus(cfg.FFmpegPath)
+	logListenStatus(cfg.ListenAddr)
+}
+
+// logEnvStatus reports whether a .env file was found and required values are set.
+func logEnvStatus(cfg config.Config) {
+	envPath := filepath.Join(cfg.DataDir, ".env")
+	if fileExists(envPath) {
+		log.Printf("env check: ok (%s)", envPath)
+	} else {
+		log.Printf("env check: missing (%s)", envPath)
+	}
+	log.Printf("env UI_PASSWORD: set")
+}
+
+// logFFmpegStatus reports whether the ffmpeg binary is discoverable.
+func logFFmpegStatus(path string) {
+	resolved := path
+	ok := false
+	note := ""
+
+	if filepath.IsAbs(path) {
+		info, err := os.Stat(path)
+		switch {
+		case err == nil && !info.IsDir():
+			ok = true
+		case err != nil:
+			note = err.Error()
+		default:
+			note = "path is a directory"
+		}
+	} else {
+		found, err := exec.LookPath(path)
+		switch {
+		case err == nil:
+			ok = true
+			resolved = found
+		case errors.Is(err, exec.ErrDot):
+			note = "found relative to current dir; use absolute path"
+		default:
+			note = err.Error()
+		}
+	}
+
+	if ok {
+		log.Printf("ffmpeg check: ok (%s)", resolved)
+		return
+	}
+	if note != "" {
+		log.Printf("ffmpeg check: missing (%s)", note)
+		return
+	}
+	log.Printf("ffmpeg check: missing")
+}
+
+// logListenStatus reports the listen address and a local URL helper.
+func logListenStatus(addr string) {
+	log.Printf("listen addr: %s", addr)
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "localhost"
+	}
+	log.Printf("local url: http://%s", net.JoinHostPort(host, port))
+}
+
+// fileExists reports whether a path exists and is a file.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }

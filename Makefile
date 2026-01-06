@@ -5,9 +5,14 @@
 GO      ?= go
 OS      ?= $(shell $(GO) env GOOS)
 ARCH    ?= $(shell $(GO) env GOARCH)
+HOST_OS ?= $(shell $(GO) env GOHOSTOS)
 BIN_EXT :=
 ifeq ($(OS),windows)
   BIN_EXT := .exe
+endif
+HOST_BIN_EXT :=
+ifeq ($(HOST_OS),windows)
+  HOST_BIN_EXT := .exe
 endif
 
 # --- Detección del directorio de binarios de Go ---
@@ -20,7 +25,7 @@ endif
 
 GOLANGCI_LINT_VER ?= latest
 LINT_TIMEOUT      ?= 5m
-GOLANGCI_LINT_BIN := $(GO_BIN_DIR)/golangci-lint$(BIN_EXT)
+GOLANGCI_LINT_BIN := $(GO_BIN_DIR)/golangci-lint$(HOST_BIN_EXT)
 
 export PATH := $(GO_BIN_DIR):$(PATH)
 export GOCACHE := $(abspath ./.gocache)

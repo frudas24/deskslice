@@ -3,10 +3,13 @@ package app
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/frudas24/deskslice/internal/calib"
+	"github.com/frudas24/deskslice/internal/web"
 )
 
 // RegisterRoutes wires API and static handlers onto the mux.
@@ -21,9 +24,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux, staticDir string) {
 	mux.HandleFunc("/api/state", a.handleState)
 	mux.Handle("/ws/signal", a.Signaling())
 	mux.Handle("/ws/control", a.Control())
+	mux.HandleFunc("/favicon.ico", handleFavicon)
 
-	fileServer := http.FileServer(http.Dir(staticDir))
-	mux.Handle("/", fileServer)
+	mux.Handle("/", staticFileServer(staticDir))
 }
 
 type loginRequest struct {
@@ -121,4 +124,25 @@ func buildCalibStatus(c calib.Calib) calibStatus {
 		Chat:   chat.W > 0 && chat.H > 0,
 		Scroll: scroll.W > 0 && scroll.H > 0,
 	}
+}
+
+// staticFileServer returns a handler for static assets, preferring disk then embed.
+func staticFileServer(staticDir string) http.Handler {
+	if staticDir != "" {
+		if info, err := os.Stat(staticDir); err == nil && info.IsDir() {
+			return http.FileServer(http.Dir(staticDir))
+		}
+	}
+
+	embedded, err := web.StaticFS()
+	if err != nil {
+		log.Printf("static assets unavailable: %v", err)
+		return http.NotFoundHandler()
+	}
+	return http.FileServer(http.FS(embedded))
+}
+
+// handleFavicon avoids noisy 404s for the default browser request.
+func handleFavicon(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
 }
