@@ -59,3 +59,36 @@ func TestProtocol_Enter(t *testing.T) {
 		t.Fatalf("unexpected message: %+v", msg)
 	}
 }
+
+// TestProtocol_Wheel verifies decoding a wheel message.
+func TestProtocol_Wheel(t *testing.T) {
+	var msg Message
+	if err := json.Unmarshal([]byte(`{"t":"wheel","x":0.5,"y":0.25,"wheelX":-120,"wheelY":240}`), &msg); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if msg.T != "wheel" || msg.X != 0.5 || msg.Y != 0.25 || msg.WheelX != -120 || msg.WheelY != 240 {
+		t.Fatalf("unexpected message: %+v", msg)
+	}
+}
+
+// TestProtocol_RelMove verifies decoding a relative mouse move message.
+func TestProtocol_RelMove(t *testing.T) {
+	var msg Message
+	if err := json.Unmarshal([]byte(`{"t":"relMove","dx":12,"dy":-7}`), &msg); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if msg.T != "relMove" || msg.DX != 12 || msg.DY != -7 {
+		t.Fatalf("unexpected message: %+v", msg)
+	}
+}
+
+// TestProtocol_Click verifies decoding a click message.
+func TestProtocol_Click(t *testing.T) {
+	var msg Message
+	if err := json.Unmarshal([]byte(`{"t":"click"}`), &msg); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if msg.T != "click" {
+		t.Fatalf("unexpected message: %+v", msg)
+	}
+}
