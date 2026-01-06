@@ -90,6 +90,9 @@ document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
   calibrator?.resize();
   if (document.fullscreenElement) {
+    applyUIPrefs();
+    syncPointerToggle();
+    syncScrollToggle();
     applySavedScaleOrReset();
   } else {
     scrollModeEnabled = false;
@@ -104,6 +107,9 @@ let lastFullscreenClass = document.body.classList.contains("is-fullscreen");
 new MutationObserver(() => {
   const current = document.body.classList.contains("is-fullscreen");
   if (current && !lastFullscreenClass) {
+    applyUIPrefs();
+    syncPointerToggle();
+    syncScrollToggle();
     applySavedScaleOrReset();
   }
   if (!current && lastFullscreenClass) {
@@ -200,6 +206,7 @@ scaleResetBtn?.addEventListener("click", () => resetScale());
 pointerToggleBtn?.addEventListener("click", () => {
   pointerEnabled = !pointerEnabled;
   syncPointerToggle();
+  saveUIPrefs();
   if (pointerEnabled) {
     resetPanZoom();
   }
@@ -209,6 +216,7 @@ mouseModeBtn?.addEventListener("click", () => {
   if (!pointerEnabled) return;
   mouseMode = mouseMode === "mouse" ? "touch" : "mouse";
   syncMouseModeToggle();
+  saveUIPrefs();
 });
 
 scrollToggleBtn?.addEventListener("click", () => {
@@ -217,6 +225,7 @@ scrollToggleBtn?.addEventListener("click", () => {
   }
   scrollModeEnabled = !scrollModeEnabled;
   syncScrollToggle();
+  saveUIPrefs();
 });
 
 debugOverlaysToggle?.addEventListener("change", () => {
@@ -253,6 +262,7 @@ async function bootstrap() {
     loadScalePrefs();
     loadDebugPrefs();
     loadPostFXPrefs();
+    applyUIPrefs();
     syncPointerToggle();
     syncScrollToggle();
     syncFXUI();
@@ -650,6 +660,43 @@ function syncMouseModeToggle() {
   if (!mouseModeBtn) return;
   mouseModeBtn.classList.toggle("is-mouse", pointerEnabled && mouseMode === "mouse");
   mouseModeBtn.classList.toggle("is-touch", !pointerEnabled || mouseMode !== "mouse");
+}
+
+function uiPrefsKey() {
+  return `deskslice:uiPrefs:${location.host}`;
+}
+
+function loadUIPrefs() {
+  try {
+    const raw = window.localStorage.getItem(uiPrefsKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const mm = parsed?.mouseMode === "touch" ? "touch" : "mouse";
+    const pe = parsed?.pointerEnabled !== undefined ? Boolean(parsed.pointerEnabled) : true;
+    const sm = Boolean(parsed?.scrollModeEnabled);
+    return { mouseMode: mm, pointerEnabled: pe, scrollModeEnabled: sm };
+  } catch (_) {
+    return null;
+  }
+}
+
+function applyUIPrefs() {
+  const prefs = loadUIPrefs();
+  if (!prefs) return;
+  mouseMode = prefs.mouseMode;
+  if (document.body.classList.contains("is-fullscreen")) {
+    pointerEnabled = prefs.pointerEnabled;
+    scrollModeEnabled = prefs.scrollModeEnabled && prefs.pointerEnabled;
+  }
+}
+
+function saveUIPrefs() {
+  try {
+    const prefs = { mouseMode, pointerEnabled, scrollModeEnabled: scrollModeEnabled && pointerEnabled };
+    window.localStorage.setItem(uiPrefsKey(), JSON.stringify(prefs));
+  } catch (_) {
+    // ignore
+  }
 }
 
 function resetPanZoom() {
