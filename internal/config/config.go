@@ -11,39 +11,48 @@ import (
 )
 
 const (
-	defaultListenAddr  = "0.0.0.0:8787"
-	defaultDataDir     = "./data"
-	defaultFFmpegPath  = "ffmpeg"
-	defaultCapture     = "gdigrab"
-	defaultFPS         = 30
-	defaultBitrateKbps = 6000
-	defaultMonitorIdx  = 1
+	defaultListenAddr      = "0.0.0.0:8787"
+	defaultDataDir         = "./data"
+	defaultFFmpegPath      = "ffmpeg"
+	defaultCapture         = "gdigrab"
+	defaultFPS             = 30
+	defaultBitrateKbps     = 6000
+	defaultMonitorIdx      = 1
+	defaultMJPEGEnabled    = true
+	defaultMJPEGIntervalMs = 120
+	defaultMJPEGQuality    = 60
 )
 
 // Config holds runtime configuration values.
 type Config struct {
-	ListenAddr    string
-	UIPassword    string
-	DataDir       string
-	CalibPath     string
-	FFmpegPath    string
-	CaptureDriver string
-	FPS           int
-	BitrateKbps   int
-	MonitorIndex  int
+	ListenAddr      string
+	UIPassword      string
+	DataDir         string
+	CalibPath       string
+	FFmpegPath      string
+	CaptureDriver   string
+	FPS             int
+	BitrateKbps     int
+	MonitorIndex    int
+	MJPEGEnabled    bool
+	MJPEGIntervalMs int
+	MJPEGQuality    int
 }
 
 // Load reads configuration from ./data/.env and environment variables.
 func Load() (Config, error) {
 	cfg := Config{
-		ListenAddr:    defaultListenAddr,
-		DataDir:       defaultDataDir,
-		CalibPath:     filepath.Join(defaultDataDir, "calib.json"),
-		FFmpegPath:    defaultFFmpegPath,
-		CaptureDriver: defaultCapture,
-		FPS:           defaultFPS,
-		BitrateKbps:   defaultBitrateKbps,
-		MonitorIndex:  defaultMonitorIdx,
+		ListenAddr:      defaultListenAddr,
+		DataDir:         defaultDataDir,
+		CalibPath:       filepath.Join(defaultDataDir, "calib.json"),
+		FFmpegPath:      defaultFFmpegPath,
+		CaptureDriver:   defaultCapture,
+		FPS:             defaultFPS,
+		BitrateKbps:     defaultBitrateKbps,
+		MonitorIndex:    defaultMonitorIdx,
+		MJPEGEnabled:    defaultMJPEGEnabled,
+		MJPEGIntervalMs: defaultMJPEGIntervalMs,
+		MJPEGQuality:    defaultMJPEGQuality,
 	}
 
 	if err := loadEnvFile(filepath.Join(cfg.DataDir, ".env")); err != nil {
@@ -74,6 +83,23 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	cfg.MonitorIndex = monitorIdx
+
+	cfg.MJPEGEnabled = envBool("MJPEG_ENABLED", cfg.MJPEGEnabled)
+
+	mjpegInterval, err := envInt("MJPEG_INTERVAL_MS", cfg.MJPEGIntervalMs)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.MJPEGIntervalMs = mjpegInterval
+
+	mjpegQuality, err := envInt("MJPEG_QUALITY", cfg.MJPEGQuality)
+	if err != nil {
+		return Config{}, err
+	}
+	if mjpegQuality <= 0 || mjpegQuality > 100 {
+		return Config{}, fmt.Errorf("MJPEG_QUALITY must be 1-100")
+	}
+	cfg.MJPEGQuality = mjpegQuality
 
 	if cfg.UIPassword == "" {
 		return Config{}, errors.New("UI_PASSWORD is required")
@@ -111,6 +137,22 @@ func envInt(key string, def int) (int, error) {
 		return 0, fmt.Errorf("%s must be an integer: %w", key, err)
 	}
 	return value, nil
+}
+
+// envBool returns a bool env override when present, otherwise a default.
+func envBool(key string, def bool) bool {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return def
+	}
+	switch strings.ToLower(raw) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return def
+	}
 }
 
 // loadEnvFile loads KEY=VALUE pairs from a .env file.

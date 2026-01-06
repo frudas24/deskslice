@@ -103,10 +103,23 @@ body {
 }
 
 video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   background: #111;
+  z-index: 2;
+}
+
+#mjpeg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #111;
+  z-index: 1;
 }
 
 #overlay {
@@ -116,6 +129,7 @@ video {
   height: 100%;
   pointer-events: auto;
   touch-action: none;
+  z-index: 3;
 }
 
 .hint {
@@ -151,6 +165,16 @@ video {
 
 .app[data-auth="true"] .login {
   display: none;
+}
+
+.typing-panel {
+  display: none;
+}
+
+.app[data-auth="true"] .typing-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .section {
@@ -210,6 +234,12 @@ textarea {
 
 .btn.primary {
   background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.btn.active {
+  background: #1c1b19;
   color: #fff;
   border-color: transparent;
 }

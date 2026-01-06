@@ -11,7 +11,8 @@ const loginForm = document.getElementById("login-form");
 const passwordInput = document.getElementById("password");
 const loginHint = document.getElementById("login-hint");
 const controls = document.getElementById("controls");
-const modeSelect = document.getElementById("mode");
+const modePresetupBtn = document.getElementById("mode-presetup");
+const modeRunBtn = document.getElementById("mode-run");
 const monitorSelect = document.getElementById("monitor");
 const restartBtn = document.getElementById("restart-presetup");
 const inputToggle = document.getElementById("input-enabled");
@@ -24,6 +25,7 @@ const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
 const sendEnterBtn = document.getElementById("send-enter");
 const video = document.getElementById("video");
+const mjpegImg = document.getElementById("mjpeg");
 const overlay = document.getElementById("overlay");
 
 let controlClient = null;
@@ -31,6 +33,9 @@ let webrtcClient = null;
 let calibrator = null;
 
 setStatus("offline");
+if (video) {
+  video.addEventListener("loadedmetadata", updatePreviewVisibility);
+}
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -48,8 +53,12 @@ restartBtn.addEventListener("click", () => {
   controlClient?.restartPresetup();
 });
 
-modeSelect.addEventListener("change", () => {
-  controlClient?.setMode(modeSelect.value);
+modePresetupBtn.addEventListener("click", () => {
+  controlClient?.setMode("presetup");
+});
+
+modeRunBtn.addEventListener("click", () => {
+  controlClient?.setMode("run");
 });
 
 monitorSelect.addEventListener("change", () => {
@@ -90,7 +99,7 @@ async function bootstrap() {
     controlClient?.sendCalib(step, rect);
   }, (text) => {
     calibHint.textContent = text;
-  });
+  }, mjpegImg);
 
   bindPointerEvents(overlay, (event) => normalizedPoint(event), (type, id, x, y) => {
     controlClient?.sendPointer(type, id, x, y);
@@ -102,12 +111,26 @@ async function bootstrap() {
   } catch (err) {
     hintText.textContent = "WebRTC failed to connect. Check server logs.";
   }
+
+  if (mjpegImg) {
+    mjpegImg.src = `/mjpeg/desktop?ts=${Date.now()}`;
+    mjpegImg.addEventListener("error", () => {
+      mjpegImg.style.display = "none";
+      video.style.display = "block";
+    }, { once: true });
+  }
 }
 
 function applyState(state) {
-  modeSelect.value = state.mode || "presetup";
+  updateModeButtons(state.mode || "presetup");
   inputToggle.checked = Boolean(state.inputEnabled);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
+}
+
+function updateModeButtons(mode) {
+  const isRun = mode === "run";
+  modeRunBtn.classList.toggle("active", isRun);
+  modePresetupBtn.classList.toggle("active", !isRun);
 }
 
 function populateMonitors(monitors, activeIndex) {
@@ -128,7 +151,7 @@ function populateMonitors(monitors, activeIndex) {
 }
 
 function normalizedPoint(event) {
-  const bounds = video.getBoundingClientRect();
+  const bounds = overlay.getBoundingClientRect();
   const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
   const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
   return { x, y };
@@ -137,6 +160,14 @@ function normalizedPoint(event) {
 function setStatus(state) {
   statusText.textContent = state;
   statusDot.style.background = state === "streaming" ? "#2a6f6d" : "#b2472f";
+  updatePreviewVisibility();
+}
+
+function updatePreviewVisibility() {
+  if (!mjpegImg) return;
+  const hasVideo = video.videoWidth > 0 && statusText.textContent === "streaming";
+  mjpegImg.style.display = hasVideo ? "none" : "block";
+  video.style.display = hasVideo ? "block" : "none";
 }
 
 function buildWsUrl(path) {

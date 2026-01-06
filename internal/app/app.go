@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/frudas24/deskslice/internal/calib"
 	"github.com/frudas24/deskslice/internal/config"
 	"github.com/frudas24/deskslice/internal/control"
 	"github.com/frudas24/deskslice/internal/ffmpeg"
+	"github.com/frudas24/deskslice/internal/mjpeg"
 	"github.com/frudas24/deskslice/internal/monitor"
 	"github.com/frudas24/deskslice/internal/session"
 	"github.com/frudas24/deskslice/internal/signaling"
@@ -20,14 +22,16 @@ import (
 
 // App coordinates the HTTP API, websocket servers, and media pipeline.
 type App struct {
-	mu        sync.Mutex
-	cfg       config.Config
-	session   *session.Session
-	runner    *ffmpeg.Runner
-	publisher *webrtc.Publisher
-	signaling *signaling.Server
-	control   *control.Server
-	monitors  []monitor.Monitor
+	mu            sync.Mutex
+	cfg           config.Config
+	session       *session.Session
+	runner        *ffmpeg.Runner
+	preview       *ffmpeg.Preview
+	previewStream *mjpeg.Stream
+	publisher     *webrtc.Publisher
+	signaling     *signaling.Server
+	control       *control.Server
+	monitors      []monitor.Monitor
 }
 
 // New creates a new application with its dependencies wired.
@@ -50,6 +54,11 @@ func New(cfg config.Config, sess *session.Session, runner *ffmpeg.Runner, publis
 		session:   sess,
 		runner:    runner,
 		publisher: publisher,
+	}
+	if cfg.MJPEGEnabled {
+		interval := time.Duration(cfg.MJPEGIntervalMs) * time.Millisecond
+		app.previewStream = mjpeg.NewStream(interval)
+		app.preview = ffmpeg.NewPreview(app.previewStream, cfg.MJPEGQuality)
 	}
 
 	app.signaling = signaling.NewServer(publisher, policy, sess.IsAuthenticated)
@@ -94,6 +103,9 @@ func (a *App) Stop() error {
 
 	a.publisher.StopForwarding()
 	a.publisher.ClosePeer()
+	if a.preview != nil {
+		_ = a.preview.Stop()
+	}
 	return a.runner.Stop()
 }
 
@@ -151,9 +163,32 @@ func (a *App) RestartPipeline(reason string) error {
 	if err := a.publisher.StartForwarding(); err != nil {
 		return err
 	}
+	a.restartPreview(mode, m, opts)
 	a.signaling.NotifyRestart()
 	_ = reason
 	return nil
+}
+
+// PreviewStream returns the MJPEG preview stream, if enabled.
+func (a *App) PreviewStream() *mjpeg.Stream {
+	return a.previewStream
+}
+
+// restartPreview starts or restarts the MJPEG preview pipeline.
+func (a *App) restartPreview(mode string, m monitor.Monitor, opts ffmpeg.Options) {
+	if a.preview == nil {
+		return
+	}
+	var err error
+	if mode == session.ModeRun {
+		c := a.session.GetCalib()
+		err = a.preview.StartRun(m, c.PluginAbs, opts)
+	} else {
+		err = a.preview.StartPresetup(m, opts)
+	}
+	if err != nil {
+		log.Printf("preview: start failed: %v", err)
+	}
 }
 
 // ListMonitors returns the cached monitor list.

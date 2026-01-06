@@ -1,6 +1,7 @@
 export class Calibrator {
-  constructor(video, overlay, sendRect, setHint) {
+  constructor(video, overlay, sendRect, setHint, fallback) {
     this.video = video;
+    this.fallback = fallback;
     this.overlay = overlay;
     this.sendRect = sendRect;
     this.setHint = setHint;
@@ -27,6 +28,9 @@ export class Calibrator {
     this.overlay.addEventListener("pointercancel", (event) => this.onCancel(event));
     window.addEventListener("resize", () => this.resize());
     this.video.addEventListener("loadedmetadata", () => this.resize());
+    if (this.fallback) {
+      this.fallback.addEventListener("load", () => this.resize());
+    }
     this.resize();
   }
 
@@ -115,11 +119,12 @@ export class Calibrator {
   }
 
   pointFromEvent(event) {
-    const bounds = this.video.getBoundingClientRect();
+    const bounds = this.overlay.getBoundingClientRect();
     const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
     const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
-    const width = this.video.videoWidth || bounds.width;
-    const height = this.video.videoHeight || bounds.height;
+    const size = this.mediaSize(bounds);
+    const width = size.width;
+    const height = size.height;
     return { x: Math.round(x * width), y: Math.round(y * height) };
   }
 
@@ -144,9 +149,10 @@ export class Calibrator {
 
   drawRect(rect, color, dashed) {
     const scale = window.devicePixelRatio || 1;
-    const bounds = this.video.getBoundingClientRect();
-    const width = this.video.videoWidth || bounds.width;
-    const height = this.video.videoHeight || bounds.height;
+    const bounds = this.overlay.getBoundingClientRect();
+    const size = this.mediaSize(bounds);
+    const width = size.width;
+    const height = size.height;
     const sx = (rect.x / width) * bounds.width * scale;
     const sy = (rect.y / height) * bounds.height * scale;
     const sw = (rect.w / width) * bounds.width * scale;
@@ -177,6 +183,15 @@ export class Calibrator {
   consume(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
+  }
+
+  mediaSize(bounds) {
+    const fallbackWidth = this.fallback?.naturalWidth || 0;
+    const fallbackHeight = this.fallback?.naturalHeight || 0;
+    return {
+      width: this.video.videoWidth || fallbackWidth || bounds.width,
+      height: this.video.videoHeight || fallbackHeight || bounds.height,
+    };
   }
 }
 

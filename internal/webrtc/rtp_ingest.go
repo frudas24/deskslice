@@ -4,8 +4,10 @@ package webrtc
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
@@ -17,6 +19,10 @@ type rtpListener struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	running bool
+
+	packetCount    int
+	firstLogged    bool
+	writeErrLogged bool
 }
 
 // newRTPListener binds a UDP port for RTP ingestion.
@@ -41,6 +47,9 @@ func (l *rtpListener) start(track *webrtc.TrackLocalStaticRTP) error {
 	}
 	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.running = true
+	l.packetCount = 0
+	l.firstLogged = false
+	l.writeErrLogged = false
 	go l.loop(track)
 	return nil
 }
@@ -67,6 +76,7 @@ func (l *rtpListener) close() {
 // loop reads RTP packets and forwards them to the track.
 func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP) {
 	buf := make([]byte, 1600)
+	lastLog := time.Now()
 	for {
 		select {
 		case <-l.ctx.Done():
@@ -82,6 +92,18 @@ func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP) {
 		if err := pkt.Unmarshal(buf[:n]); err != nil {
 			continue
 		}
-		_ = track.WriteRTP(&pkt)
+		l.packetCount++
+		if !l.firstLogged {
+			log.Printf("rtp: first packet ssrc=%d pt=%d seq=%d ts=%d", pkt.SSRC, pkt.PayloadType, pkt.SequenceNumber, pkt.Timestamp)
+			l.firstLogged = true
+		}
+		if time.Since(lastLog) > 5*time.Second {
+			log.Printf("rtp: packets=%d", l.packetCount)
+			lastLog = time.Now()
+		}
+		if err := track.WriteRTP(&pkt); err != nil && !l.writeErrLogged {
+			log.Printf("rtp: write failed: %v", err)
+			l.writeErrLogged = true
+		}
 	}
 }

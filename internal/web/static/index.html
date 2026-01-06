@@ -23,10 +23,19 @@
         <section class="panel video-panel">
           <div class="video-wrap">
             <video id="video" autoplay playsinline muted></video>
+            <img id="mjpeg" alt="MJPEG preview">
             <canvas id="overlay"></canvas>
           </div>
           <div class="hint" id="hint-text">
             Login to connect and start streaming.
+          </div>
+          <div class="section typing-panel">
+            <div class="section-title">Typing</div>
+            <textarea id="typebox" rows="4" placeholder="Type and send..."></textarea>
+            <div class="row">
+              <button type="button" class="btn primary" id="send-text">Send</button>
+              <button type="button" class="btn" id="send-enter">Enter</button>
+            </div>
           </div>
         </section>
 
@@ -44,11 +53,8 @@
             <div class="section">
               <div class="section-title">Session</div>
               <div class="row">
-                <label class="label" for="mode">Mode</label>
-                <select id="mode">
-                  <option value="presetup">Presetup</option>
-                  <option value="run">Run</option>
-                </select>
+                <button type="button" class="btn" id="mode-presetup">Stop</button>
+                <button type="button" class="btn" id="mode-run">Run</button>
               </div>
               <div class="row">
                 <label class="label" for="monitor">Monitor</label>
@@ -72,15 +78,6 @@
                 <button type="button" class="btn primary" id="save-calib">Save</button>
               </div>
               <div class="hint small" id="calib-hint">Draw a rectangle over the video.</div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">Typing</div>
-              <textarea id="typebox" rows="4" placeholder="Type and send..."></textarea>
-              <div class="row">
-                <button type="button" class="btn primary" id="send-text">Send</button>
-                <button type="button" class="btn" id="send-enter">Enter</button>
-              </div>
             </div>
           </div>
         </section>

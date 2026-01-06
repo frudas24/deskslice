@@ -25,6 +25,9 @@ func (a *App) RegisterRoutes(mux *http.ServeMux, staticDir string) {
 	mux.Handle("/ws/signal", a.Signaling())
 	mux.Handle("/ws/control", a.Control())
 	mux.HandleFunc("/favicon.ico", handleFavicon)
+	if stream := a.PreviewStream(); stream != nil {
+		mux.HandleFunc("/mjpeg/desktop", stream.Handler)
+	}
 
 	mux.Handle("/", staticFileServer(staticDir))
 }
