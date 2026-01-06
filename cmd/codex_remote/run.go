@@ -50,6 +50,11 @@ func run() error {
 	if err := appInstance.Start(); err != nil {
 		return err
 	}
+	defer func() {
+		if err := appInstance.Stop(); err != nil {
+			log.Printf("shutdown: %v", err)
+		}
+	}()
 
 	mux := http.NewServeMux()
 	appInstance.RegisterRoutes(mux, "")

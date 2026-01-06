@@ -3,6 +3,7 @@ package signaling
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -51,26 +52,32 @@ func NewServer(publisher *pub.Publisher, policy ViewerPolicy, authFn func() bool
 // ServeHTTP upgrades the request and starts the signaling loop.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.authFn != nil && !s.authFn() {
+		log.Printf("signaling: unauthorized from %s", r.RemoteAddr)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Printf("signaling: upgrade failed from %s: %v", r.RemoteAddr, err)
 		return
 	}
 
 	if err := s.acceptConn(conn); err != nil {
+		log.Printf("signaling: reject from %s: %v", r.RemoteAddr, err)
 		s.rejectConn(conn, err.Error())
 		return
 	}
+	log.Printf("signaling: connected %s", r.RemoteAddr)
 	defer s.cleanupConn(conn)
 
 	peer, err := s.publisher.NewPeer()
 	if err != nil {
+		log.Printf("signaling: new peer failed: %v", err)
 		return
 	}
 	if err := s.attachPeer(conn, peer); err != nil {
+		log.Printf("signaling: attach peer failed: %v", err)
 		_ = peer.Close()
 		return
 	}
@@ -86,9 +93,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for {
 		var msg Message
 		if err := conn.ReadJSON(&msg); err != nil {
+			log.Printf("signaling: read failed: %v", err)
 			return
 		}
 		if err := s.handleMessage(conn, peer, msg); err != nil {
+			log.Printf("signaling: handle message failed: %v", err)
 			return
 		}
 	}
@@ -153,6 +162,7 @@ func (s *Server) cleanupConn(conn *websocket.Conn) {
 	}
 	s.mu.Unlock()
 	_ = conn.Close()
+	log.Printf("signaling: disconnected")
 }
 
 // handleMessage dispatches signaling messages.

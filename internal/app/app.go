@@ -85,6 +85,16 @@ func (a *App) Start() error {
 	return a.RestartPipeline("startup")
 }
 
+// Stop shuts down the media pipeline and closes active peers.
+func (a *App) Stop() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.publisher.StopForwarding()
+	a.publisher.ClosePeer()
+	return a.runner.Stop()
+}
+
 // RestartPipeline restarts ffmpeg and RTP forwarding.
 func (a *App) RestartPipeline(reason string) error {
 	a.mu.Lock()

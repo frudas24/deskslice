@@ -11,6 +11,11 @@ export class Calibrator {
     this.rect = null;
     this.lastRect = null;
     this.pluginRect = null;
+    this.rects = {
+      plugin: null,
+      chat: null,
+      scroll: null,
+    };
     this.bind();
   }
 
@@ -19,6 +24,7 @@ export class Calibrator {
     this.overlay.addEventListener("pointerdown", (event) => this.onDown(event));
     this.overlay.addEventListener("pointermove", (event) => this.onMove(event));
     this.overlay.addEventListener("pointerup", (event) => this.onUp(event));
+    this.overlay.addEventListener("pointercancel", (event) => this.onCancel(event));
     window.addEventListener("resize", () => this.resize());
     this.video.addEventListener("loadedmetadata", () => this.resize());
     this.resize();
@@ -28,24 +34,31 @@ export class Calibrator {
     this.step = step;
     this.active = true;
     this.setHint(`Draw ${step} rectangle`);
-    this.clear();
+    this.render();
   }
 
   onDown(event) {
     if (!this.active) return;
+    this.consume(event);
+    this.overlay.setPointerCapture(event.pointerId);
     this.start = this.pointFromEvent(event);
     this.rect = null;
   }
 
   onMove(event) {
     if (!this.active || !this.start) return;
+    this.consume(event);
     const current = this.pointFromEvent(event);
     this.rect = rectFromPoints(this.start, current);
-    this.draw(this.rect);
+    this.render();
   }
 
   onUp(event) {
     if (!this.active || !this.start) return;
+    this.consume(event);
+    if (this.overlay.hasPointerCapture(event.pointerId)) {
+      this.overlay.releasePointerCapture(event.pointerId);
+    }
     const end = this.pointFromEvent(event);
     const rect = rectFromPoints(this.start, end);
     this.lastRect = rect;
@@ -54,6 +67,17 @@ export class Calibrator {
     this.start = null;
     this.rect = null;
     this.setHint("Saved calibration");
+    this.render();
+  }
+
+  onCancel(event) {
+    if (!this.active) return;
+    this.consume(event);
+    if (this.overlay.hasPointerCapture(event.pointerId)) {
+      this.overlay.releasePointerCapture(event.pointerId);
+    }
+    this.start = null;
+    this.rect = null;
   }
 
   save() {
@@ -63,6 +87,7 @@ export class Calibrator {
     }
     this.applyRect(this.lastRect);
     this.setHint("Calibration sent");
+    this.render();
   }
 
   applyRect(rect) {
@@ -70,13 +95,21 @@ export class Calibrator {
     let payload = { ...rect };
     if (this.step === "plugin") {
       this.pluginRect = rect;
+      this.rects.plugin = rect;
     } else if (this.pluginRect) {
+      if (this.step === "chat") {
+        this.rects.chat = rect;
+      } else if (this.step === "scroll") {
+        this.rects.scroll = rect;
+      }
       payload = {
         x: rect.x - this.pluginRect.x,
         y: rect.y - this.pluginRect.y,
         w: rect.w,
         h: rect.h,
       };
+    } else if (this.step) {
+      this.rects[this.step] = rect;
     }
     this.sendRect(this.step, payload);
   }
@@ -90,9 +123,26 @@ export class Calibrator {
     return { x: Math.round(x * width), y: Math.round(y * height) };
   }
 
-  draw(rect) {
+  render() {
     this.clear();
-    if (!rect) return;
+    this.drawStored();
+    if (!this.rect || !this.step) return;
+    this.drawRect(this.rect, stepColor(this.step), true);
+  }
+
+  drawStored() {
+    if (this.rects.plugin) {
+      this.drawRect(this.rects.plugin, stepColor("plugin"), false);
+    }
+    if (this.rects.chat) {
+      this.drawRect(this.rects.chat, stepColor("chat"), false);
+    }
+    if (this.rects.scroll) {
+      this.drawRect(this.rects.scroll, stepColor("scroll"), false);
+    }
+  }
+
+  drawRect(rect, color, dashed) {
     const scale = window.devicePixelRatio || 1;
     const bounds = this.video.getBoundingClientRect();
     const width = this.video.videoWidth || bounds.width;
@@ -101,10 +151,16 @@ export class Calibrator {
     const sy = (rect.y / height) * bounds.height * scale;
     const sw = (rect.w / width) * bounds.width * scale;
     const sh = (rect.h / height) * bounds.height * scale;
-    this.ctx.strokeStyle = "rgba(194, 91, 46, 0.9)";
+    this.ctx.save();
+    this.ctx.strokeStyle = color;
     this.ctx.lineWidth = 2 * scale;
-    this.ctx.setLineDash([6 * scale, 4 * scale]);
+    if (dashed) {
+      this.ctx.setLineDash([6 * scale, 4 * scale]);
+    } else {
+      this.ctx.setLineDash([]);
+    }
     this.ctx.strokeRect(sx, sy, sw, sh);
+    this.ctx.restore();
   }
 
   clear() {
@@ -115,7 +171,25 @@ export class Calibrator {
     const scale = window.devicePixelRatio || 1;
     this.overlay.width = this.overlay.clientWidth * scale;
     this.overlay.height = this.overlay.clientHeight * scale;
-    this.clear();
+    this.render();
+  }
+
+  consume(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}
+
+function stepColor(step) {
+  switch (step) {
+    case "plugin":
+      return "rgba(214, 90, 48, 0.95)";
+    case "chat":
+      return "rgba(45, 130, 152, 0.95)";
+    case "scroll":
+      return "rgba(214, 172, 60, 0.95)";
+    default:
+      return "rgba(194, 91, 46, 0.9)";
   }
 }
 

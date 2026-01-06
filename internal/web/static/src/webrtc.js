@@ -14,6 +14,7 @@ export class WebRTCClient {
       this.ws = new WebSocket(url);
       this.ws.onopen = async () => {
         try {
+          this.setStatus("connecting");
           await this.startPeer();
           resolve();
         } catch (err) {
@@ -24,6 +25,7 @@ export class WebRTCClient {
         this.handleMessage(event.data);
       };
       this.ws.onerror = (err) => {
+        this.setStatus("offline");
         reject(err);
       };
       this.ws.onclose = () => {
@@ -57,11 +59,17 @@ export class WebRTCClient {
     this.pc = new RTCPeerConnection();
     this.pc.addTransceiver("video", { direction: "recvonly" });
     this.pc.ontrack = (event) => {
+      let stream = null;
       if (event.streams && event.streams[0]) {
-        this.video.srcObject = event.streams[0];
-        this.video.play().catch(() => {});
-        this.setStatus("streaming");
+        stream = event.streams[0];
+      } else if (event.track) {
+        stream = new MediaStream();
+        stream.addTrack(event.track);
       }
+      if (!stream) return;
+      this.video.srcObject = stream;
+      this.video.play().catch(() => {});
+      this.setStatus("streaming");
     };
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.ws && this.ws.readyState === WebSocket.OPEN) {

@@ -97,7 +97,11 @@ async function bootstrap() {
   });
 
   webrtcClient = new WebRTCClient(video, setStatus);
-  await webrtcClient.connect(buildWsUrl("/ws/signal"));
+  try {
+    await webrtcClient.connect(buildWsUrl("/ws/signal"));
+  } catch (err) {
+    hintText.textContent = "WebRTC failed to connect. Check server logs.";
+  }
 }
 
 function applyState(state) {
