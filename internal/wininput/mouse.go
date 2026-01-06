@@ -7,16 +7,12 @@ import "github.com/lxn/win"
 
 // MoveAbs moves the cursor to an absolute screen coordinate.
 func (w *WinInjector) MoveAbs(x, y int) error {
+	if win.SetCursorPos(int32(x), int32(y)) {
+		return nil
+	}
 	dx, dy := mapAbsolute(x, y)
 	flags := uint32(win.MOUSEEVENTF_MOVE | win.MOUSEEVENTF_ABSOLUTE | win.MOUSEEVENTF_VIRTUALDESK)
-	if err := sendMouseInput(flags, dx, dy, 0); err != nil {
-		if win.SetCursorPos(int32(x), int32(y)) {
-			return nil
-		}
-		return err
-	}
-	win.SetCursorPos(int32(x), int32(y))
-	return nil
+	return sendMouseInput(flags, dx, dy, 0)
 }
 
 // LeftDown presses the left mouse button.

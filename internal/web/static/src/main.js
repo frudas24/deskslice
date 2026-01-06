@@ -27,14 +27,20 @@ const sendEnterBtn = document.getElementById("send-enter");
 const video = document.getElementById("video");
 const mjpegImg = document.getElementById("mjpeg");
 const overlay = document.getElementById("overlay");
+const videoWrap = document.querySelector(".video-wrap");
 
 let controlClient = null;
 let webrtcClient = null;
 let calibrator = null;
+let aspectPollTimer = null;
+let lastWrapAspect = "";
 
 setStatus("offline");
 if (video) {
-  video.addEventListener("loadedmetadata", updatePreviewVisibility);
+  video.addEventListener("loadedmetadata", () => {
+    updatePreviewVisibility();
+    updateWrapAspectRatio();
+  });
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -51,20 +57,24 @@ loginForm.addEventListener("submit", async (event) => {
 
 restartBtn.addEventListener("click", () => {
   controlClient?.restartPresetup();
+  startAspectRatioPoll();
 });
 
 modePresetupBtn.addEventListener("click", () => {
   controlClient?.setMode("presetup");
+  startAspectRatioPoll();
 });
 
 modeRunBtn.addEventListener("click", () => {
   controlClient?.setMode("run");
+  startAspectRatioPoll();
 });
 
 monitorSelect.addEventListener("change", () => {
   const idx = Number.parseInt(monitorSelect.value, 10);
   if (!Number.isNaN(idx)) {
     controlClient?.setMonitor(idx);
+    startAspectRatioPoll();
   }
 });
 
@@ -118,6 +128,7 @@ async function bootstrap() {
       mjpegImg.style.display = "none";
       video.style.display = "block";
     }, { once: true });
+    startAspectRatioPoll();
   }
 }
 
@@ -171,6 +182,34 @@ function updatePreviewVisibility() {
   const hasVideo = video.videoWidth > 0 && statusText.textContent === "streaming";
   mjpegImg.style.display = hasVideo ? "none" : "block";
   video.style.display = hasVideo ? "block" : "none";
+  updateWrapAspectRatio();
+}
+
+function updateWrapAspectRatio() {
+  if (!videoWrap) return;
+  const bounds = videoWrap.getBoundingClientRect();
+  const size = mediaSize(bounds);
+  if (!size.width || !size.height) return;
+  const aspect = `${size.width} / ${size.height}`;
+  if (aspect === lastWrapAspect) return;
+  videoWrap.style.aspectRatio = aspect;
+  lastWrapAspect = aspect;
+  calibrator?.resize();
+}
+
+function startAspectRatioPoll() {
+  if (aspectPollTimer) return;
+  let tries = 0;
+  aspectPollTimer = window.setInterval(() => {
+    tries += 1;
+    updateWrapAspectRatio();
+    const videoReady = video.videoWidth > 0 && video.videoHeight > 0;
+    const mjpegReady = (mjpegImg?.naturalWidth || 0) > 0 && (mjpegImg?.naturalHeight || 0) > 0;
+    if (videoReady || mjpegReady || tries >= 40) {
+      window.clearInterval(aspectPollTimer);
+      aspectPollTimer = null;
+    }
+  }, 250);
 }
 
 function contentRect(bounds) {
