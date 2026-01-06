@@ -134,13 +134,13 @@ func (s *Server) handleMessage(msg Message) error {
 
 // handlePointerDown handles pointer down events.
 func (s *Server) handlePointerDown(msg Message) error {
-	absX, absY, mode, err := s.mapCoords(msg.X, msg.Y)
+	c := s.session.GetCalib()
+	absX, absY, mode, pluginAbs, err := s.mapCoordsWithCalib(msg.X, msg.Y, c)
 	if err != nil {
 		return err
 	}
 	if mode == session.ModeRun {
-		c := s.session.GetCalib()
-		actions := s.gestures.HandleDown(s.session.InputEnabled(), msg.ID, absX, absY, c.PluginAbs, c.ScrollRel)
+		actions := s.gestures.HandleDown(s.session.InputEnabled(), msg.ID, absX, absY, pluginAbs, c.ScrollRel)
 		return s.applyActions(actions)
 	}
 	actions := buildPresetupActions("down", absX, absY)
@@ -149,7 +149,8 @@ func (s *Server) handlePointerDown(msg Message) error {
 
 // handlePointerMove handles pointer move events.
 func (s *Server) handlePointerMove(msg Message) error {
-	absX, absY, mode, err := s.mapCoords(msg.X, msg.Y)
+	c := s.session.GetCalib()
+	absX, absY, mode, _, err := s.mapCoordsWithCalib(msg.X, msg.Y, c)
 	if err != nil {
 		return err
 	}
@@ -163,7 +164,8 @@ func (s *Server) handlePointerMove(msg Message) error {
 
 // handlePointerUp handles pointer up events.
 func (s *Server) handlePointerUp(msg Message) error {
-	absX, absY, mode, err := s.mapCoords(msg.X, msg.Y)
+	c := s.session.GetCalib()
+	absX, absY, mode, _, err := s.mapCoordsWithCalib(msg.X, msg.Y, c)
 	if err != nil {
 		return err
 	}
@@ -221,26 +223,40 @@ func (s *Server) handleCalibRect(msg Message) error {
 	return nil
 }
 
-// mapCoords converts normalized coords into absolute screen coordinates.
-func (s *Server) mapCoords(xn, yn float64) (int, int, string, error) {
+// mapCoordsWithCalib converts normalized coords into absolute screen coordinates using a consistent calibration snapshot.
+func (s *Server) mapCoordsWithCalib(xn, yn float64, c calib.Calib) (int, int, string, calib.Rect, error) {
 	mode := s.session.Mode()
 	if mode == session.ModeRun {
-		c := s.session.GetCalib()
-		x, y := NormToAbsRun(xn, yn, c.PluginAbs)
-		return x, y, mode, nil
+		monitors, err := s.listMonitors()
+		if err != nil {
+			return 0, 0, mode, calib.Rect{}, err
+		}
+		monitorIndex := c.MonitorIndex
+		if monitorIndex <= 0 {
+			monitorIndex = s.session.Monitor()
+		}
+		m, ok := monitor.GetMonitorByIndex(monitors, monitorIndex)
+		if !ok {
+			return 0, 0, mode, calib.Rect{}, fmt.Errorf("monitor %d not found", monitorIndex)
+		}
+		pluginAbs := calib.Normalize(c.PluginAbs)
+		pluginAbs.X += m.X
+		pluginAbs.Y += m.Y
+		x, y := NormToAbsRun(xn, yn, pluginAbs)
+		return x, y, mode, pluginAbs, nil
 	}
 
 	monitors, err := s.listMonitors()
 	if err != nil {
-		return 0, 0, mode, err
+		return 0, 0, mode, calib.Rect{}, err
 	}
 	monitorIndex := s.session.Monitor()
 	m, ok := monitor.GetMonitorByIndex(monitors, monitorIndex)
 	if !ok {
-		return 0, 0, mode, fmt.Errorf("monitor %d not found", monitorIndex)
+		return 0, 0, mode, calib.Rect{}, fmt.Errorf("monitor %d not found", monitorIndex)
 	}
 	x, y := NormToAbsPresetup(xn, yn, m)
-	return x, y, mode, nil
+	return x, y, mode, calib.Rect{}, nil
 }
 
 // applyActions executes actions using the injector.
