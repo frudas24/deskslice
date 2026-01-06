@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>DeskSlice</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app" data-auth="false">
+      <header class="top">
+        <div class="brand">
+          <span class="brand-mark">DeskSlice</span>
+          <span class="brand-sub">Codex Remote Panel</span>
+        </div>
+        <div class="status">
+          <span class="dot" id="status-dot"></span>
+          <span id="status-text">offline</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel video-panel">
+          <div class="video-wrap">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+          </div>
+          <div class="hint" id="hint-text">
+            Login to connect and start streaming.
+          </div>
+        </section>
+
+        <section class="panel control-panel">
+          <form id="login-form" class="login">
+            <label class="label" for="password">UI password</label>
+            <div class="row">
+              <input id="password" type="password" placeholder="UI_PASSWORD" autocomplete="current-password">
+              <button type="submit" class="btn primary">Login</button>
+            </div>
+            <div class="hint small" id="login-hint"></div>
+          </form>
+
+          <div class="controls" id="controls">
+            <div class="section">
+              <div class="section-title">Session</div>
+              <div class="row">
+                <label class="label" for="mode">Mode</label>
+                <select id="mode">
+                  <option value="presetup">Presetup</option>
+                  <option value="run">Run</option>
+                </select>
+              </div>
+              <div class="row">
+                <label class="label" for="monitor">Monitor</label>
+                <select id="monitor"></select>
+              </div>
+              <div class="row">
+                <button type="button" class="btn" id="restart-presetup">Restart presetup</button>
+                <label class="toggle">
+                  <input type="checkbox" id="input-enabled" checked>
+                  <span>Input enabled</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Calibration</div>
+              <div class="row">
+                <button type="button" class="btn" id="set-plugin">Set plugin</button>
+                <button type="button" class="btn" id="set-chat">Set chat</button>
+                <button type="button" class="btn" id="set-scroll">Set scroll</button>
+                <button type="button" class="btn primary" id="save-calib">Save</button>
+              </div>
+              <div class="hint small" id="calib-hint">Draw a rectangle over the video.</div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Typing</div>
+              <textarea id="typebox" rows="4" placeholder="Type and send..."></textarea>
+              <div class="row">
+                <button type="button" class="btn primary" id="send-text">Send</button>
+                <button type="button" class="btn" id="send-enter">Enter</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
