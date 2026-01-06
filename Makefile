@@ -31,7 +31,22 @@ BUILD_TAGS ?=
 
 GO_BUILD := GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -gcflags 'all=-e' -tags '$(BUILD_TAGS)'
 
-DIST_DIR := ./dist/$(OS)_$(ARCH)
+DIST_DIR_BASE := ./dist
+ifeq ($(OS),windows)
+  ifeq ($(ARCH),amd64)
+    DIST_DIR := $(DIST_DIR_BASE)/win64
+  else
+    DIST_DIR := $(DIST_DIR_BASE)/$(OS)_$(ARCH)
+  endif
+else ifeq ($(OS),linux)
+  ifeq ($(ARCH),amd64)
+    DIST_DIR := $(DIST_DIR_BASE)/linux_x86-64
+  else
+    DIST_DIR := $(DIST_DIR_BASE)/$(OS)_$(ARCH)
+  endif
+else
+  DIST_DIR := $(DIST_DIR_BASE)/$(OS)_$(ARCH)
+endif
 
 APP_NAME := codex_remote
 APP_ENTRY := ./cmd/$(APP_NAME)

@@ -54,6 +54,8 @@ func New(cfg config.Config, sess *session.Session, runner *ffmpeg.Runner, publis
 	app.signaling = signaling.NewServer(publisher, policy, sess.IsAuthenticated)
 	app.control = control.NewServer(sess, injector, app.ListMonitors, func(reason string) {
 		_ = app.RestartPipeline(reason)
+	}, func(c calib.Calib) error {
+		return calib.Save(cfg.CalibPath, c)
 	})
 
 	return app, nil

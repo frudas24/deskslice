@@ -25,11 +25,12 @@ type Server struct {
 	gestures         *GestureState
 	listMonitors     MonitorProvider
 	onPipelineChange func(reason string)
+	saveCalib        func(calib.Calib) error
 	conn             *websocket.Conn
 }
 
 // NewServer creates a control websocket server.
-func NewServer(sess *session.Session, injector wininput.Injector, listMonitors MonitorProvider, onPipelineChange func(reason string)) *Server {
+func NewServer(sess *session.Session, injector wininput.Injector, listMonitors MonitorProvider, onPipelineChange func(reason string), saveCalib func(calib.Calib) error) *Server {
 	return &Server{
 		session:      sess,
 		injector:     injector,
@@ -41,6 +42,7 @@ func NewServer(sess *session.Session, injector wininput.Injector, listMonitors M
 			CheckOrigin:     func(*http.Request) bool { return true },
 		},
 		onPipelineChange: onPipelineChange,
+		saveCalib:        saveCalib,
 	}
 }
 
@@ -211,6 +213,11 @@ func (s *Server) handleCalibRect(msg Message) error {
 	}
 
 	s.session.SetCalib(c)
+	if s.saveCalib != nil {
+		if err := s.saveCalib(c); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
