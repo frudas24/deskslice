@@ -13,6 +13,8 @@ const loginHint = document.getElementById("login-hint");
 const controls = document.getElementById("controls");
 const modePresetupBtn = document.getElementById("mode-presetup");
 const modeRunBtn = document.getElementById("mode-run");
+const videoWebRTCBtn = document.getElementById("video-webrtc");
+const videoMJPEGBtn = document.getElementById("video-mjpeg");
 const monitorSelect = document.getElementById("monitor");
 const restartBtn = document.getElementById("restart-presetup");
 const inputToggle = document.getElementById("input-enabled");
@@ -34,6 +36,7 @@ let webrtcClient = null;
 let calibrator = null;
 let aspectPollTimer = null;
 let lastWrapAspect = "";
+let videoMode = "webrtc";
 
 setStatus("offline");
 if (video) {
@@ -68,6 +71,14 @@ modePresetupBtn.addEventListener("click", () => {
 modeRunBtn.addEventListener("click", () => {
   controlClient?.setMode("run");
   startAspectRatioPoll();
+});
+
+videoWebRTCBtn.addEventListener("click", () => {
+  setVideoMode("webrtc");
+});
+
+videoMJPEGBtn.addEventListener("click", () => {
+  setVideoMode("mjpeg");
 });
 
 monitorSelect.addEventListener("change", () => {
@@ -115,26 +126,19 @@ async function bootstrap() {
     controlClient?.sendPointer(type, id, x, y);
   });
 
-  webrtcClient = new WebRTCClient(video, setStatus);
-  try {
-    await webrtcClient.connect(buildWsUrl("/ws/signal"));
-  } catch (err) {
-    hintText.textContent = "WebRTC failed to connect. Check server logs.";
-  }
-
-  if (mjpegImg) {
-    mjpegImg.src = `/mjpeg/desktop?ts=${Date.now()}`;
-    mjpegImg.addEventListener("error", () => {
-      mjpegImg.style.display = "none";
-      video.style.display = "block";
-    }, { once: true });
-    startAspectRatioPoll();
+  if (videoMode === "mjpeg") {
+    startMJPEG();
+    setStatus("mjpeg");
+  } else {
+    await startWebRTCOrFallback();
   }
 }
 
 function applyState(state) {
   updateModeButtons(state.mode || "presetup");
   inputToggle.checked = Boolean(state.inputEnabled);
+  videoMode = state.videoMode || "webrtc";
+  updateVideoButtons(videoMode);
   hintText.textContent = state.mode === "run" ? "Run mode active." : "Presetup mode active.";
 }
 
@@ -142,6 +146,12 @@ function updateModeButtons(mode) {
   const isRun = mode === "run";
   modeRunBtn.classList.toggle("active", isRun);
   modePresetupBtn.classList.toggle("active", !isRun);
+}
+
+function updateVideoButtons(mode) {
+  const useMJPEG = mode === "mjpeg";
+  videoMJPEGBtn.classList.toggle("active", useMJPEG);
+  videoWebRTCBtn.classList.toggle("active", !useMJPEG);
 }
 
 function populateMonitors(monitors, activeIndex) {
@@ -173,15 +183,20 @@ function normalizedPoint(event) {
 
 function setStatus(state) {
   statusText.textContent = state;
-  statusDot.style.background = state === "streaming" ? "#2a6f6d" : "#b2472f";
+  statusDot.style.background = state === "streaming" || state === "mjpeg" ? "#2a6f6d" : "#b2472f";
   updatePreviewVisibility();
 }
 
 function updatePreviewVisibility() {
   if (!mjpegImg) return;
-  const hasVideo = video.videoWidth > 0 && statusText.textContent === "streaming";
-  mjpegImg.style.display = hasVideo ? "none" : "block";
-  video.style.display = hasVideo ? "block" : "none";
+  if (videoMode === "mjpeg") {
+    mjpegImg.style.display = "block";
+    video.style.display = "none";
+    updateWrapAspectRatio();
+    return;
+  }
+  mjpegImg.style.display = "none";
+  video.style.display = "block";
   updateWrapAspectRatio();
 }
 
@@ -210,6 +225,61 @@ function startAspectRatioPoll() {
       aspectPollTimer = null;
     }
   }, 250);
+}
+
+async function setVideoMode(next) {
+  if (!next || next === videoMode) {
+    updatePreviewVisibility();
+    return;
+  }
+  videoMode = next;
+  updateVideoButtons(videoMode);
+  controlClient?.setVideoMode(videoMode);
+
+  if (videoMode === "mjpeg") {
+    webrtcClient?.close();
+    webrtcClient = null;
+    startMJPEG();
+    setStatus("mjpeg");
+    return;
+  }
+
+  stopMJPEG();
+  await startWebRTCOrFallback();
+}
+
+function startMJPEG() {
+  if (!mjpegImg) return;
+  mjpegImg.style.display = "block";
+  mjpegImg.src = `/mjpeg/desktop?ts=${Date.now()}`;
+  mjpegImg.addEventListener("error", () => {
+    mjpegImg.style.display = "none";
+  }, { once: true });
+  startAspectRatioPoll();
+}
+
+function stopMJPEG() {
+  if (!mjpegImg) return;
+  mjpegImg.src = "";
+  mjpegImg.style.display = "none";
+}
+
+async function startWebRTCOrFallback() {
+  if (!video) return;
+  webrtcClient?.close();
+  webrtcClient = new WebRTCClient(video, setStatus);
+  try {
+    await webrtcClient.connect(buildWsUrl("/ws/signal"));
+    hintText.textContent = "WebRTC connecting...";
+    window.setTimeout(() => {
+      if (videoMode !== "webrtc") return;
+      if (statusText.textContent === "streaming") return;
+      setVideoMode("mjpeg");
+    }, 5000);
+  } catch (err) {
+    hintText.textContent = "WebRTC failed. Switching to MJPEG.";
+    setVideoMode("mjpeg");
+  }
 }
 
 function contentRect(bounds) {

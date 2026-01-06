@@ -40,6 +40,7 @@ type stateResponse struct {
 	Mode          string       `json:"mode"`
 	MonitorIndex  int          `json:"monitor"`
 	InputEnabled  bool         `json:"inputEnabled"`
+	VideoMode     string       `json:"videoMode"`
 	Calib         calibStatus  `json:"calib"`
 	CalibData     *calib.Calib `json:"calibData,omitempty"`
 	Authenticated bool         `json:"authenticated"`
@@ -102,6 +103,7 @@ func (a *App) handleState(w http.ResponseWriter, _ *http.Request) {
 		Mode:          snap.Mode,
 		MonitorIndex:  snap.MonitorIndex,
 		InputEnabled:  snap.InputEnabled,
+		VideoMode:     snap.VideoMode,
 		Calib:         buildCalibStatus(snap.Calib),
 		Authenticated: snap.Authenticated,
 	}

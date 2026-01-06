@@ -13,12 +13,19 @@ const ModePresetup = "presetup"
 // ModeRun is the cropped streaming mode.
 const ModeRun = "run"
 
+// VideoWebRTC runs the RTP pipeline for WebRTC video.
+const VideoWebRTC = "webrtc"
+
+// VideoMJPEG runs the MJPEG preview pipeline only.
+const VideoMJPEG = "mjpeg"
+
 // Snapshot represents a read-only view of the current session state.
 type Snapshot struct {
 	Authenticated bool
 	InputEnabled  bool
 	Mode          string
 	MonitorIndex  int
+	VideoMode     string
 	Calib         calib.Calib
 }
 
@@ -30,6 +37,7 @@ type Session struct {
 	inputEnabled  bool
 	mode          string
 	monitorIndex  int
+	videoMode     string
 	calib         calib.Calib
 }
 
@@ -39,6 +47,7 @@ func New(password string) *Session {
 		password:     password,
 		inputEnabled: true,
 		mode:         ModePresetup,
+		videoMode:    VideoWebRTC,
 	}
 }
 
@@ -110,6 +119,28 @@ func (s *Session) Monitor() int {
 	return s.monitorIndex
 }
 
+// SetVideoMode sets which video pipeline the server should run.
+func (s *Session) SetVideoMode(mode string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch mode {
+	case VideoMJPEG:
+		s.videoMode = VideoMJPEG
+	default:
+		s.videoMode = VideoWebRTC
+	}
+}
+
+// VideoMode returns the active video pipeline mode.
+func (s *Session) VideoMode() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.videoMode == "" {
+		return VideoWebRTC
+	}
+	return s.videoMode
+}
+
 // SetCalib stores calibration data.
 func (s *Session) SetCalib(c calib.Calib) {
 	s.mu.Lock()
@@ -133,6 +164,7 @@ func (s *Session) Snapshot() Snapshot {
 		InputEnabled:  s.inputEnabled,
 		Mode:          s.mode,
 		MonitorIndex:  s.monitorIndex,
+		VideoMode:     s.videoMode,
 		Calib:         s.calib,
 	}
 }

@@ -120,6 +120,10 @@ func (s *Server) handleMessage(msg Message) error {
 		s.session.SetMode(session.ModePresetup)
 		s.notifyPipeline("restart_presetup")
 		return nil
+	case "setVideo":
+		s.session.SetVideoMode(msg.Video)
+		s.notifyPipeline("video")
+		return nil
 	case "calibRect":
 		return s.handleCalibRect(msg)
 	case "inputEnabled":

@@ -17,6 +17,7 @@ type Message struct {
 	Y       float64 `json:"y,omitempty"`
 	Text    string  `json:"text,omitempty"`
 	Mode    string  `json:"mode,omitempty"`
+	Video   string  `json:"video,omitempty"`
 	Idx     int     `json:"idx,omitempty"`
 	Step    string  `json:"step,omitempty"`
 	Rect    *Rect   `json:"rect,omitempty"`

@@ -6,6 +6,7 @@ export class WebRTCClient {
     this.pc = null;
     this.url = null;
     this.restartTimer = null;
+    this.closing = false;
   }
 
   connect(url) {
@@ -14,6 +15,7 @@ export class WebRTCClient {
       this.ws = new WebSocket(url);
       this.ws.onopen = async () => {
         try {
+          this.closing = false;
           this.setStatus("connecting");
           await this.startPeer();
           resolve();
@@ -25,11 +27,15 @@ export class WebRTCClient {
         this.handleMessage(event.data);
       };
       this.ws.onerror = (err) => {
-        this.setStatus("offline");
+        if (!this.closing) {
+          this.setStatus("offline");
+        }
         reject(err);
       };
       this.ws.onclose = () => {
-        this.setStatus("offline");
+        if (!this.closing) {
+          this.setStatus("offline");
+        }
       };
     });
   }
@@ -108,6 +114,7 @@ export class WebRTCClient {
   }
 
   close() {
+    this.closing = true;
     if (this.ws) {
       this.ws.close();
       this.ws = null;

@@ -39,10 +39,10 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 
 - The server prefers `d3d11grab` and falls back to `gdigrab` if unavailable.
 - The web client is plain HTML/CSS/JS under `internal/web/static/` (no Node build).
-- Seeing **two `ffmpeg` processes is expected** when MJPEG preview is enabled:
-  - `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` is the main H264→RTP pipeline used by WebRTC.
-  - `ffmpeg: preview ... -f rawvideo -` is a lightweight preview pipeline that feeds `/mjpeg/desktop` (used as a fallback when WebRTC is black or not connected).
-  - Disable the preview with `MJPEG_ENABLED=false` in `data/.env`.
+- The server runs **one** `ffmpeg` pipeline at a time:
+  - `WebRTC` runs `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` (H264→RTP).
+  - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
+  - Switch in the UI (Session → `WebRTC` / `MJPEG`) to avoid running both.
 
 ## License
 

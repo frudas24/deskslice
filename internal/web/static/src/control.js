@@ -36,6 +36,10 @@ export class ControlClient {
     this.send({ t: "setMode", mode });
   }
 
+  setVideoMode(video) {
+    this.send({ t: "setVideo", video });
+  }
+
   setMonitor(idx) {
     this.send({ t: "setMonitor", idx });
   }
