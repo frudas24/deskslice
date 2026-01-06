@@ -47,6 +47,7 @@ const scaleXPlusBtn = document.getElementById("scale-x-plus");
 const scaleYMinusBtn = document.getElementById("scale-y-minus");
 const scaleYPlusBtn = document.getElementById("scale-y-plus");
 const scaleResetBtn = document.getElementById("scale-reset");
+const pointerToggleBtn = document.getElementById("toggle-pointer");
 
 let controlClient = null;
 let webrtcClient = null;
@@ -61,6 +62,7 @@ let currentMode = "presetup";
 let currentMonitorIndex = 1;
 let currentCalibData = null;
 let scrollOverlay = { holdMs: 2500, tickMs: 50, maxDelta: 240 };
+let pointerEnabled = true;
 let fsScaleX = 1.0;
 let fsScaleY = 1.0;
 const fsScaleMin = 0.25;
@@ -70,7 +72,7 @@ document.addEventListener("fullscreenchange", () => {
   updateWrapAspectRatio();
   calibrator?.resize();
   if (document.fullscreenElement) {
-    resetScale();
+    applySavedScaleOrReset();
   }
 });
 
@@ -78,7 +80,7 @@ let lastFullscreenClass = document.body.classList.contains("is-fullscreen");
 new MutationObserver(() => {
   const current = document.body.classList.contains("is-fullscreen");
   if (current && !lastFullscreenClass) {
-    resetScale();
+    applySavedScaleOrReset();
   }
   lastFullscreenClass = current;
 }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
@@ -164,6 +166,10 @@ scaleXPlusBtn?.addEventListener("click", () => adjustScale("x", 0.05));
 scaleYMinusBtn?.addEventListener("click", () => adjustScale("y", -0.05));
 scaleYPlusBtn?.addEventListener("click", () => adjustScale("y", 0.05));
 scaleResetBtn?.addEventListener("click", () => resetScale());
+pointerToggleBtn?.addEventListener("click", () => {
+  pointerEnabled = !pointerEnabled;
+  syncPointerToggle();
+});
 
 async function bootstrap() {
   controls.style.display = "flex";
@@ -171,6 +177,8 @@ async function bootstrap() {
   cachedMonitors = monitors;
   populateMonitors(monitors, state.monitor);
   applyState(state);
+  loadScalePrefs();
+  syncPointerToggle();
 
   controlClient = new ControlClient(buildWsUrl("/ws/control"));
   await controlClient.connect();
@@ -192,7 +200,7 @@ async function bootstrap() {
     overlay,
     canvas: scrollpad,
     getPoint: (event) => normalizedPoint(event),
-    getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, scroll: scrollOverlay }),
+    getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, pointerEnabled, scroll: scrollOverlay }),
     sendPointer: (type, id, x, y) => controlClient?.sendPointer(type, id, x, y),
     sendWheel: (x, y, wheelX, wheelY) => controlClient?.sendWheel(x, y, wheelX, wheelY),
   });
@@ -209,7 +217,7 @@ async function bootstrap() {
   });
   fullscreen.setEnabled(app.dataset.auth === "true");
   fullscreen.showControls?.();
-  resetScale();
+  applySavedScaleOrReset();
 
   if (videoMode === "mjpeg") {
     startMJPEG();
@@ -410,6 +418,7 @@ function adjustScale(axis, delta) {
     fsScaleY = clamp(Math.round((fsScaleY + step) * 20) / 20, fsScaleMin, fsScaleMax);
   }
   applyScale();
+  saveScalePrefs();
 }
 
 function resetScale() {
@@ -423,12 +432,55 @@ function resetScale() {
   fsScaleX = Math.round(fsScaleX * 20) / 20;
   fsScaleY = Math.round(fsScaleY * 20) / 20;
   applyScale();
+  saveScalePrefs();
 }
 
 function applyScale() {
   videoWrap.style.setProperty("--fs-scale-x", String(fsScaleX));
   videoWrap.style.setProperty("--fs-scale-y", String(fsScaleY));
   calibrator?.resize();
+}
+
+function applySavedScaleOrReset() {
+  if (!videoWrap) return;
+  if (!loadScalePrefs()) {
+    resetScale();
+    return;
+  }
+  applyScale();
+}
+
+function scaleStorageKey() {
+  return `deskslice:fsScale:${location.host}`;
+}
+
+function loadScalePrefs() {
+  try {
+    const raw = window.localStorage.getItem(scaleStorageKey());
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const sx = Number(parsed?.x);
+    const sy = Number(parsed?.y);
+    if (!Number.isFinite(sx) || !Number.isFinite(sy)) return false;
+    fsScaleX = clamp(sx, fsScaleMin, fsScaleMax);
+    fsScaleY = clamp(sy, fsScaleMin, fsScaleMax);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function saveScalePrefs() {
+  try {
+    window.localStorage.setItem(scaleStorageKey(), JSON.stringify({ x: fsScaleX, y: fsScaleY }));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function syncPointerToggle() {
+  if (!pointerToggleBtn) return;
+  pointerToggleBtn.classList.toggle("is-disabled", !pointerEnabled);
 }
 
 function mediaSize(bounds) {

@@ -91,6 +91,23 @@ body {
   box-shadow: var(--shadow);
 }
 
+.app[data-auth="false"] .video-panel {
+  display: none;
+}
+
+.app[data-auth="false"] .layout {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.app[data-auth="false"] .control-panel {
+  width: min(520px, 100%);
+}
+
+.app[data-auth="false"] .status {
+  display: none;
+}
+
 .video-panel {
   display: flex;
   flex-direction: column;
@@ -144,6 +161,61 @@ video {
   pointer-events: none;
   touch-action: none;
   z-index: 5;
+}
+
+.edge-icon-btn {
+  position: absolute;
+  bottom: calc(10px + var(--safe-bottom));
+  left: calc(10px + var(--safe-left));
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(20, 20, 20, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  z-index: 4;
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.edge-icon-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  margin: 0 auto;
+}
+
+.edge-icon-btn .mouse-body,
+.edge-icon-btn .mouse-wheel {
+  fill: rgba(255, 255, 255, 0.88);
+}
+
+.edge-icon-btn .mouse-slash {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.edge-icon-btn.is-disabled .mouse-slash {
+  opacity: 1;
+}
+
+body.is-fullscreen .edge-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.is-fullscreen.fs-controls-visible .edge-icon-btn,
+body.is-fullscreen.drawer-left-open .edge-icon-btn,
+body.is-fullscreen.drawer-right-open .edge-icon-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .hint {

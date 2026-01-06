@@ -149,6 +149,10 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
   const onDown = (event) => {
     const point = getPoint(event);
     if (!point) return;
+    const ctx = getContext?.() || {};
+    if (ctx.pointerEnabled === false) {
+      return;
+    }
     activeId = event.pointerId;
     startNorm = point;
     const bounds = overlay.getBoundingClientRect();
@@ -159,7 +163,6 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
 
     overlay.setPointerCapture(activeId);
 
-    const ctx = getContext?.() || {};
     const scroll = ctx.scroll || {};
     const holdMs = Number(scroll.holdMs);
     const hold = Number.isFinite(holdMs) ? holdMs : 2500;
