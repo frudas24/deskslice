@@ -31,6 +31,10 @@ const fxClarity = document.getElementById("fx-clarity");
 const fxClarityValue = document.getElementById("fx-clarity-value");
 const fxDenoise = document.getElementById("fx-denoise");
 const fxDenoiseValue = document.getElementById("fx-denoise-value");
+const perfBattery = document.getElementById("perf-battery");
+const perfBalanced = document.getElementById("perf-balanced");
+const perfCrisp = document.getElementById("perf-crisp");
+const perfHint = document.getElementById("perf-hint");
 const typeBox = document.getElementById("typebox");
 const sendTextBtn = document.getElementById("send-text");
 const sendEnterBtn = document.getElementById("send-enter");
@@ -247,6 +251,10 @@ fxDenoise?.addEventListener("input", () => {
   applyPostFX();
   savePostFXPrefs();
 });
+
+perfBattery?.addEventListener("click", () => applyPerfPreset("battery"));
+perfBalanced?.addEventListener("click", () => applyPerfPreset("balanced"));
+perfCrisp?.addEventListener("click", () => applyPerfPreset("crisp"));
 
 async function bootstrap() {
   if (bootstrapping || bootstrapped) {
@@ -844,6 +852,28 @@ function applyPostFX() {
 
   if (video) video.style.filter = filter;
   if (mjpegImg) mjpegImg.style.filter = filter;
+}
+
+function applyPerfPreset(name) {
+  let preset = { clarity: 0, denoise: 0, intervalMs: 120, quality: 80 };
+  switch (name) {
+    case "battery":
+      preset = { clarity: 0, denoise: 0, intervalMs: 160, quality: 70 };
+      break;
+    case "crisp":
+      preset = { clarity: 18, denoise: 0, intervalMs: 66, quality: 90 };
+      break;
+    default:
+      preset = { clarity: 10, denoise: 1, intervalMs: 100, quality: 80 };
+      break;
+  }
+  postFX = { clarity: preset.clarity, denoise: preset.denoise };
+  syncFXUI();
+  applyPostFX();
+  savePostFXPrefs();
+  if (perfHint) {
+    perfHint.textContent = `Suggested: MJPEG_INTERVAL_MS=${preset.intervalMs}, MJPEG_QUALITY=${preset.quality}`;
+  }
 }
 
 function mediaSize(bounds) {
