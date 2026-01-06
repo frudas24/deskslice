@@ -80,7 +80,8 @@ func (s *Server) acceptConn(conn *websocket.Conn) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.conn != nil {
-		return fmt.Errorf("control connection already active")
+		_ = s.conn.Close()
+		s.conn = nil
 	}
 	s.conn = conn
 	return nil
