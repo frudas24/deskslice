@@ -209,6 +209,24 @@ video {
   opacity: 1;
 }
 
+body.is-fullscreen .edge-icon-btn.above {
+  bottom: calc(64px + var(--safe-bottom));
+}
+
+.edge-icon-btn .mode-touch,
+.edge-icon-btn .mode-mouse {
+  fill: rgba(255, 255, 255, 0.88);
+  opacity: 0;
+}
+
+.edge-icon-btn.is-touch .mode-touch {
+  opacity: 1;
+}
+
+.edge-icon-btn.is-mouse .mode-mouse {
+  opacity: 1;
+}
+
 body.is-fullscreen .edge-icon-btn.right {
   left: auto;
   right: calc(10px + var(--safe-right));

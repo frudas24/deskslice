@@ -105,6 +105,10 @@ func (s *Server) handleMessage(msg Message) error {
 		return s.handlePointerMove(msg)
 	case "up":
 		return s.handlePointerUp(msg)
+	case "relMove":
+		return s.handleRelMove(msg)
+	case "click":
+		return s.handleClick()
 	case "wheel":
 		return s.handleWheel(msg)
 	case "type":
@@ -139,6 +143,28 @@ func (s *Server) handleMessage(msg Message) error {
 	default:
 		return nil
 	}
+}
+
+// handleRelMove injects a relative mouse move (trackpad-style).
+func (s *Server) handleRelMove(msg Message) error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
+	if msg.DX == 0 && msg.DY == 0 {
+		return nil
+	}
+	return s.injector.MoveRel(msg.DX, msg.DY)
+}
+
+// handleClick injects a left click at the current cursor position.
+func (s *Server) handleClick() error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
+	if err := s.injector.LeftDown(); err != nil {
+		return err
+	}
+	return s.injector.LeftUp()
 }
 
 // handleWheel injects mouse wheel events at the provided normalized coordinate.

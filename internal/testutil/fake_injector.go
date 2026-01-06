@@ -25,6 +25,12 @@ func (f *FakeInjector) MoveAbs(x, y int) error {
 	return nil
 }
 
+// MoveRel records a relative move.
+func (f *FakeInjector) MoveRel(dx, dy int) error {
+	f.Calls = append(f.Calls, Call{Name: "MoveRel", X: dx, Y: dy})
+	return nil
+}
+
 // LeftDown records a left mouse down.
 func (f *FakeInjector) LeftDown() error {
 	f.Calls = append(f.Calls, Call{Name: "LeftDown"})

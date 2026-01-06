@@ -71,6 +71,14 @@ export class ControlClient {
   sendWheel(x, y, wheelX, wheelY) {
     this.send({ t: "wheel", x, y, wheelX, wheelY });
   }
+
+  sendRelMove(dx, dy) {
+    this.send({ t: "relMove", dx, dy });
+  }
+
+  sendClick() {
+    this.send({ t: "click" });
+  }
 }
 
 export function bindPointerEvents(target, getPoint, send) {

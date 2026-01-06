@@ -50,6 +50,7 @@ const scaleYMinusBtn = document.getElementById("scale-y-minus");
 const scaleYPlusBtn = document.getElementById("scale-y-plus");
 const scaleResetBtn = document.getElementById("scale-reset");
 const pointerToggleBtn = document.getElementById("toggle-pointer");
+const mouseModeBtn = document.getElementById("toggle-mouse-mode");
 const scrollToggleBtn = document.getElementById("toggle-scroll");
 
 let controlClient = null;
@@ -66,6 +67,7 @@ let currentMonitorIndex = 1;
 let currentCalibData = null;
 let scrollOverlay = { tickMs: 50, maxDelta: 240 };
 let pointerEnabled = true;
+let mouseMode = "touch";
 let scrollModeEnabled = false;
 let debugOverlays = false;
 let fsScaleX = 1.0;
@@ -198,6 +200,12 @@ pointerToggleBtn?.addEventListener("click", () => {
   }
 });
 
+mouseModeBtn?.addEventListener("click", () => {
+  if (!pointerEnabled) return;
+  mouseMode = mouseMode === "mouse" ? "touch" : "mouse";
+  syncMouseModeToggle();
+});
+
 scrollToggleBtn?.addEventListener("click", () => {
   if (!pointerEnabled) {
     return;
@@ -250,9 +258,12 @@ async function bootstrap() {
       overlay,
       canvas: scrollpad,
       getPoint: (event) => normalizedPoint(event),
-      getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, pointerEnabled, scrollModeEnabled, scroll: scrollOverlay }),
+      getMetrics: () => overlayMetrics(),
+      getContext: () => ({ mode: currentMode, inputEnabled: inputToggle.checked, pointerEnabled, mouseMode, scrollModeEnabled, scroll: scrollOverlay }),
       sendPointer: (type, id, x, y) => controlClient?.sendPointer(type, id, x, y),
       sendWheel: (x, y, wheelX, wheelY) => controlClient?.sendWheel(x, y, wheelX, wheelY),
+      sendRelMove: (dx, dy) => controlClient?.sendRelMove(dx, dy),
+      sendClick: () => controlClient?.sendClick(),
     });
 
     fullscreen = bindFullscreen({
@@ -606,6 +617,13 @@ function syncPointerToggle() {
     scrollModeEnabled = false;
     syncScrollToggle();
   }
+  syncMouseModeToggle();
+}
+
+function syncMouseModeToggle() {
+  if (!mouseModeBtn) return;
+  mouseModeBtn.classList.toggle("is-mouse", pointerEnabled && mouseMode === "mouse");
+  mouseModeBtn.classList.toggle("is-touch", !pointerEnabled || mouseMode !== "mouse");
 }
 
 function resetPanZoom() {
@@ -663,6 +681,18 @@ function syncScrollToggle() {
   if (!pointerEnabled) {
     scrollToggleBtn.classList.add("is-disabled");
   }
+}
+
+function overlayMetrics() {
+  const bounds = overlay.getBoundingClientRect();
+  const rect = contentRect(bounds);
+  const size = mediaSize(bounds);
+  return {
+    rectWidth: rect.width,
+    rectHeight: rect.height,
+    mediaWidth: size.width,
+    mediaHeight: size.height,
+  };
 }
 
 function debugStorageKey() {

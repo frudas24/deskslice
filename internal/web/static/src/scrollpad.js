@@ -1,4 +1,4 @@
-export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPointer, sendWheel }) {
+export function bindScrollPad({ overlay, canvas, getPoint, getMetrics, getContext, sendPointer, sendWheel, sendRelMove, sendClick }) {
   let activeId = null;
   let startNorm = null;
   let lastNorm = null;
@@ -8,6 +8,8 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
   let dragging = false;
   let scrollActive = false;
   let radius = 90;
+  let mouseMoved = false;
+  let lastClient = null;
 
   const stopTick = () => {
     if (tickTimer) {
@@ -107,6 +109,7 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
       return;
     }
 
+    const ctx = getContext?.() || {};
     const point = getPoint(event);
     lastNorm = point || lastNorm;
 
@@ -114,6 +117,10 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
       stopTick();
       scrollActive = false;
       hide();
+    } else if (ctx.mode === "run" && ctx.inputEnabled && ctx.mouseMode === "mouse") {
+      if (!mouseMoved) {
+        sendClick?.();
+      }
     } else if (!dragging && startNorm) {
       sendPointer?.("down", activeId, startNorm.x, startNorm.y);
       if (point) {
@@ -132,6 +139,8 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     startRel = null;
     lastRel = null;
     dragging = false;
+    mouseMoved = false;
+    lastClient = null;
   };
 
   const onDown = (event) => {
@@ -149,11 +158,17 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
     lastRel = startRel;
     dragging = false;
     scrollActive = false;
+    mouseMoved = false;
+    lastClient = { x: event.clientX, y: event.clientY };
 
     overlay.setPointerCapture(activeId);
 
     if (ctx.mode === "run" && ctx.inputEnabled && ctx.scrollModeEnabled) {
       startScroll(ctx);
+      return;
+    }
+
+    if (ctx.mode === "run" && ctx.inputEnabled && ctx.mouseMode === "mouse") {
       return;
     }
 
@@ -174,6 +189,29 @@ export function bindScrollPad({ overlay, canvas, getPoint, getContext, sendPoint
 
     if (scrollActive) {
       render();
+      return;
+    }
+
+    const ctx = getContext?.() || {};
+    if (ctx.mode === "run" && ctx.inputEnabled && ctx.mouseMode === "mouse") {
+      const prev = lastClient || { x: event.clientX, y: event.clientY };
+      const dxPx = event.clientX - prev.x;
+      const dyPx = event.clientY - prev.y;
+      lastClient = { x: event.clientX, y: event.clientY };
+
+      const metrics = getMetrics?.();
+      const rw = Number(metrics?.rectWidth) || 0;
+      const rh = Number(metrics?.rectHeight) || 0;
+      const mw = Number(metrics?.mediaWidth) || 0;
+      const mh = Number(metrics?.mediaHeight) || 0;
+      if (rw > 0 && rh > 0 && mw > 0 && mh > 0) {
+        const dx = Math.round((dxPx / rw) * mw);
+        const dy = Math.round((dyPx / rh) * mh);
+        if (dx !== 0 || dy !== 0) {
+          sendRelMove?.(dx, dy);
+          mouseMoved = true;
+        }
+      }
       return;
     }
 

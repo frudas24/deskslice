@@ -23,6 +23,13 @@ func (n *NoopInjector) MoveAbs(x, y int) error {
 	return ErrUnsupported
 }
 
+// MoveRel returns ErrUnsupported.
+func (n *NoopInjector) MoveRel(dx, dy int) error {
+	_ = dx
+	_ = dy
+	return ErrUnsupported
+}
+
 // LeftDown returns ErrUnsupported.
 func (n *NoopInjector) LeftDown() error {
 	return ErrUnsupported

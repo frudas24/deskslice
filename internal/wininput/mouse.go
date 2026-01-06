@@ -15,6 +15,11 @@ func (w *WinInjector) MoveAbs(x, y int) error {
 	return sendMouseInput(flags, dx, dy, 0)
 }
 
+// MoveRel moves the cursor relative to its current position.
+func (w *WinInjector) MoveRel(dx, dy int) error {
+	return sendMouseInput(win.MOUSEEVENTF_MOVE, int32(dx), int32(dy), 0)
+}
+
 // ClickAtPreserveCursor performs a click at (x,y) and restores the cursor position afterward.
 func (w *WinInjector) ClickAtPreserveCursor(x, y int) error {
 	var before win.POINT
