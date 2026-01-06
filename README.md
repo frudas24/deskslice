@@ -4,6 +4,24 @@ Remote control for the real Codex panel inside VS Code, designed for LAN use
 from a phone. The goal is low-latency streaming + input injection with manual
 calibration (no OCR, no UI re-implementation).
 
+## What It Solves
+
+- Control the **real Codex panel** on your Windows host from your phone over LAN (video + mouse/keyboard), without re-building the UI.
+- Quick manual calibration so clicks/typing land in the right places (plugin/chat/scroll rectangles).
+- A mobile-first fullscreen UX with safety toggles (input lock, scroll overlay, etc.).
+
+## What It Does Not Try To Do
+
+- Not a general-purpose remote desktop replacement (no multi-monitor “desktop manager”, file transfer, clipboard sync, etc.).
+- No OCR, no element detection, no UI automation “magic”: calibration is manual and expected.
+- Not hardened for hostile networks (the auth is intentionally simple; use only on trusted LAN/VPN).
+
+## Demo
+
+![DeskSlice demo](docs/demo.gif)
+
+`docs/demo.gif` a short capture showing: login → presetup calibration → run mode → typing + scroll.
+
 ## Status
 
 MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_0001.md`.
