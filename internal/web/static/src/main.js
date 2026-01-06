@@ -152,8 +152,11 @@ function populateMonitors(monitors, activeIndex) {
 
 function normalizedPoint(event) {
   const bounds = overlay.getBoundingClientRect();
-  const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
-  const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+  const rect = contentRect(bounds);
+  const cx = clamp(event.clientX - bounds.left - rect.x, 0, rect.width);
+  const cy = clamp(event.clientY - bounds.top - rect.y, 0, rect.height);
+  const x = rect.width > 0 ? clamp(cx / rect.width, 0, 1) : 0;
+  const y = rect.height > 0 ? clamp(cy / rect.height, 0, 1) : 0;
   return { x, y };
 }
 
@@ -168,6 +171,34 @@ function updatePreviewVisibility() {
   const hasVideo = video.videoWidth > 0 && statusText.textContent === "streaming";
   mjpegImg.style.display = hasVideo ? "none" : "block";
   video.style.display = hasVideo ? "block" : "none";
+}
+
+function contentRect(bounds) {
+  const size = mediaSize(bounds);
+  const mediaW = size.width;
+  const mediaH = size.height;
+  if (mediaW <= 0 || mediaH <= 0) {
+    return { x: 0, y: 0, width: bounds.width, height: bounds.height };
+  }
+  const containerAR = bounds.width / bounds.height;
+  const mediaAR = mediaW / mediaH;
+  if (mediaAR > containerAR) {
+    const width = bounds.width;
+    const height = width / mediaAR;
+    return { x: 0, y: (bounds.height - height) / 2, width, height };
+  }
+  const height = bounds.height;
+  const width = height * mediaAR;
+  return { x: (bounds.width - width) / 2, y: 0, width, height };
+}
+
+function mediaSize(bounds) {
+  const mjpegW = mjpegImg?.naturalWidth || 0;
+  const mjpegH = mjpegImg?.naturalHeight || 0;
+  return {
+    width: video.videoWidth || mjpegW || bounds.width,
+    height: video.videoHeight || mjpegH || bounds.height,
+  };
 }
 
 function buildWsUrl(path) {

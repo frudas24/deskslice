@@ -120,43 +120,49 @@ export class Calibrator {
 
   pointFromEvent(event) {
     const bounds = this.overlay.getBoundingClientRect();
-    const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
-    const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+    const rect = this.contentRect(bounds);
+    const cx = clamp(event.clientX - bounds.left - rect.x, 0, rect.width);
+    const cy = clamp(event.clientY - bounds.top - rect.y, 0, rect.height);
+    const nx = rect.width > 0 ? clamp(cx / rect.width, 0, 1) : 0;
+    const ny = rect.height > 0 ? clamp(cy / rect.height, 0, 1) : 0;
     const size = this.mediaSize(bounds);
     const width = size.width;
     const height = size.height;
-    return { x: Math.round(x * width), y: Math.round(y * height) };
+    return { x: Math.round(nx * width), y: Math.round(ny * height) };
   }
 
   render() {
     this.clear();
     this.drawStored();
     if (!this.rect || !this.step) return;
-    this.drawRect(this.rect, stepColor(this.step), true);
+    this.drawRect(this.rect, stepColor(this.step), true, this.step);
   }
 
   drawStored() {
     if (this.rects.plugin) {
-      this.drawRect(this.rects.plugin, stepColor("plugin"), false);
+      this.drawRect(this.rects.plugin, stepColor("plugin"), false, "plugin");
     }
     if (this.rects.chat) {
-      this.drawRect(this.rects.chat, stepColor("chat"), false);
+      this.drawRect(this.rects.chat, stepColor("chat"), false, "chat");
     }
     if (this.rects.scroll) {
-      this.drawRect(this.rects.scroll, stepColor("scroll"), false);
+      this.drawRect(this.rects.scroll, stepColor("scroll"), false, "scroll");
     }
   }
 
-  drawRect(rect, color, dashed) {
+  drawRect(rect, color, dashed, step) {
     const scale = window.devicePixelRatio || 1;
     const bounds = this.overlay.getBoundingClientRect();
     const size = this.mediaSize(bounds);
     const width = size.width;
     const height = size.height;
-    const sx = (rect.x / width) * bounds.width * scale;
-    const sy = (rect.y / height) * bounds.height * scale;
-    const sw = (rect.w / width) * bounds.width * scale;
-    const sh = (rect.h / height) * bounds.height * scale;
+    const displayRect = this.adjustRect(rect, step, width, height);
+    if (!displayRect) return;
+    const rectBounds = this.contentRect(bounds);
+    const sx = (displayRect.x / width) * rectBounds.width * scale + rectBounds.x * scale;
+    const sy = (displayRect.y / height) * rectBounds.height * scale + rectBounds.y * scale;
+    const sw = (displayRect.w / width) * rectBounds.width * scale;
+    const sh = (displayRect.h / height) * rectBounds.height * scale;
     this.ctx.save();
     this.ctx.strokeStyle = color;
     this.ctx.lineWidth = 2 * scale;
@@ -191,6 +197,42 @@ export class Calibrator {
     return {
       width: this.video.videoWidth || fallbackWidth || bounds.width,
       height: this.video.videoHeight || fallbackHeight || bounds.height,
+    };
+  }
+
+  contentRect(bounds) {
+    const size = this.mediaSize(bounds);
+    const mediaW = size.width;
+    const mediaH = size.height;
+    if (mediaW <= 0 || mediaH <= 0) {
+      return { x: 0, y: 0, width: bounds.width, height: bounds.height };
+    }
+    const containerAR = bounds.width / bounds.height;
+    const mediaAR = mediaW / mediaH;
+    if (mediaAR > containerAR) {
+      const width = bounds.width;
+      const height = width / mediaAR;
+      return { x: 0, y: (bounds.height - height) / 2, width, height };
+    }
+    const height = bounds.height;
+    const width = height * mediaAR;
+    return { x: (bounds.width - width) / 2, y: 0, width, height };
+  }
+
+  adjustRect(rect, step, width, height) {
+    if (!rect) return null;
+    const plugin = this.rects.plugin;
+    if (!plugin) return rect;
+    const isCropped = Math.abs(width - plugin.w) <= 2 && Math.abs(height - plugin.h) <= 2;
+    if (!isCropped) return rect;
+    if (step === "plugin") {
+      return { x: 0, y: 0, w: width, h: height };
+    }
+    return {
+      x: rect.x - plugin.x,
+      y: rect.y - plugin.y,
+      w: rect.w,
+      h: rect.h,
     };
   }
 }
