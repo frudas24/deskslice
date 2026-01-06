@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/frudas24/deskslice/internal/calib"
 	"github.com/frudas24/deskslice/internal/monitor"
@@ -185,26 +186,40 @@ func (s *Server) handlePointerUp(msg Message) error {
 
 // handleType handles type messages.
 func (s *Server) handleType(text string) error {
+	if !s.session.InputEnabled() || text == "" {
+		return nil
+	}
 	c := s.session.GetCalib()
 	pluginAbs, err := s.pluginAbsVirtual(c)
 	if err != nil {
 		return err
 	}
 	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
-	actions := ActionsForType(s.session.InputEnabled(), text, chatAbs)
-	return s.applyActions(actions)
+	x, y := centerPoint(chatAbs)
+	if err := s.clickPreserveCursor(x, y); err != nil {
+		return err
+	}
+	time.Sleep(40 * time.Millisecond)
+	return s.injector.TypeUnicode(text)
 }
 
 // handleEnter handles enter messages.
 func (s *Server) handleEnter() error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
 	c := s.session.GetCalib()
 	pluginAbs, err := s.pluginAbsVirtual(c)
 	if err != nil {
 		return err
 	}
 	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
-	actions := ActionsForEnter(s.session.InputEnabled(), chatAbs)
-	return s.applyActions(actions)
+	x, y := centerPoint(chatAbs)
+	if err := s.clickPreserveCursor(x, y); err != nil {
+		return err
+	}
+	time.Sleep(40 * time.Millisecond)
+	return s.injector.Enter()
 }
 
 // handleClearChat focuses the chat input and clears its contents.
@@ -223,9 +238,10 @@ func (s *Server) handleClearChat() error {
 	}
 	chatAbs := chatRectAbsFromPlugin(pluginAbs, c.ChatRel)
 	x, y := centerPoint(chatAbs)
-	if err := s.injector.ClickAt(x, y); err != nil {
+	if err := s.clickPreserveCursor(x, y); err != nil {
 		return err
 	}
+	time.Sleep(40 * time.Millisecond)
 	if err := s.injector.SelectAll(); err != nil {
 		return err
 	}
@@ -322,6 +338,14 @@ func (s *Server) notifyPipeline(reason string) {
 	if s.onPipelineChange != nil {
 		s.onPipelineChange(reason)
 	}
+}
+
+// clickPreserveCursor focuses a target point without leaving the cursor displaced when supported by the injector.
+func (s *Server) clickPreserveCursor(x, y int) error {
+	if injector, ok := s.injector.(interface{ ClickAtPreserveCursor(x, y int) error }); ok {
+		return injector.ClickAtPreserveCursor(x, y)
+	}
+	return s.injector.ClickAt(x, y)
 }
 
 // pluginAbsVirtual converts the stored plugin rectangle into absolute virtual-desktop coordinates.

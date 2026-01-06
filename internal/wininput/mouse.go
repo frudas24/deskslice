@@ -15,6 +15,19 @@ func (w *WinInjector) MoveAbs(x, y int) error {
 	return sendMouseInput(flags, dx, dy, 0)
 }
 
+// ClickAtPreserveCursor performs a click at (x,y) and restores the cursor position afterward.
+func (w *WinInjector) ClickAtPreserveCursor(x, y int) error {
+	var before win.POINT
+	haveBefore := win.GetCursorPos(&before)
+	if err := w.ClickAt(x, y); err != nil {
+		return err
+	}
+	if haveBefore {
+		win.SetCursorPos(before.X, before.Y)
+	}
+	return nil
+}
+
 // LeftDown presses the left mouse button.
 func (w *WinInjector) LeftDown() error {
 	return sendMouseInput(win.MOUSEEVENTF_LEFTDOWN, 0, 0, 0)
