@@ -14,6 +14,9 @@ type Call struct {
 // FakeInjector implements wininput.Injector and records calls for tests.
 type FakeInjector struct {
 	Calls []Call
+	X     int
+	Y     int
+	HasXY bool
 }
 
 // Ensure FakeInjector implements the interface.
@@ -22,12 +25,19 @@ var _ wininput.Injector = (*FakeInjector)(nil)
 // MoveAbs records an absolute move.
 func (f *FakeInjector) MoveAbs(x, y int) error {
 	f.Calls = append(f.Calls, Call{Name: "MoveAbs", X: x, Y: y})
+	f.X = x
+	f.Y = y
+	f.HasXY = true
 	return nil
 }
 
 // MoveRel records a relative move.
 func (f *FakeInjector) MoveRel(dx, dy int) error {
 	f.Calls = append(f.Calls, Call{Name: "MoveRel", X: dx, Y: dy})
+	if f.HasXY {
+		f.X += dx
+		f.Y += dy
+	}
 	return nil
 }
 
@@ -46,6 +56,9 @@ func (f *FakeInjector) LeftUp() error {
 // ClickAt records a click at a position.
 func (f *FakeInjector) ClickAt(x, y int) error {
 	f.Calls = append(f.Calls, Call{Name: "ClickAt", X: x, Y: y})
+	f.X = x
+	f.Y = y
+	f.HasXY = true
 	return nil
 }
 
@@ -83,4 +96,9 @@ func (f *FakeInjector) Wheel(delta int) error {
 func (f *FakeInjector) HWheel(delta int) error {
 	f.Calls = append(f.Calls, Call{Name: "HWheel", X: delta})
 	return nil
+}
+
+// CursorPos returns the last known cursor position.
+func (f *FakeInjector) CursorPos() (x, y int, ok bool) {
+	return f.X, f.Y, f.HasXY
 }

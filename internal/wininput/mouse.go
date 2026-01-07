@@ -5,6 +5,15 @@ package wininput
 
 import "github.com/lxn/win"
 
+// CursorPos returns the current cursor position.
+func (w *WinInjector) CursorPos() (x, y int, ok bool) {
+	var p win.POINT
+	if !win.GetCursorPos(&p) {
+		return 0, 0, false
+	}
+	return int(p.X), int(p.Y), true
+}
+
 // MoveAbs moves the cursor to an absolute screen coordinate.
 func (w *WinInjector) MoveAbs(x, y int) error {
 	if win.SetCursorPos(int32(x), int32(y)) {

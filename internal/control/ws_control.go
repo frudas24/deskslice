@@ -120,6 +120,7 @@ func (s *Server) handleMessage(msg Message) error {
 		return s.handleClearChat()
 	case "setMode":
 		s.session.SetMode(msg.Mode)
+		_ = s.cageCursorIfRun()
 		s.notifyPipeline("mode")
 		return nil
 	case "setMonitor":
@@ -139,6 +140,9 @@ func (s *Server) handleMessage(msg Message) error {
 	case "inputEnabled":
 		if msg.Enabled != nil {
 			s.session.SetInputEnabled(*msg.Enabled)
+			if *msg.Enabled {
+				_ = s.cageCursorIfRun()
+			}
 		}
 		return nil
 	default:
@@ -154,13 +158,46 @@ func (s *Server) handleRelMove(msg Message) error {
 	if msg.DX == 0 && msg.DY == 0 {
 		return nil
 	}
-	return s.injector.MoveRel(msg.DX, msg.DY)
+	if s.session.Mode() != session.ModeRun {
+		return s.injector.MoveRel(msg.DX, msg.DY)
+	}
+
+	pluginAbs, err := s.pluginAbsVirtual(s.session.GetCalib())
+	if err != nil {
+		return nil
+	}
+	pluginAbs = calib.Normalize(pluginAbs)
+	if pluginAbs.W <= 0 || pluginAbs.H <= 0 {
+		return nil
+	}
+
+	x, y, ok := s.cursorPos()
+	if !ok {
+		x, y = RectCenter(pluginAbs)
+		if err := s.injector.MoveAbs(x, y); err != nil {
+			return err
+		}
+	}
+
+	insideX, insideY := ClampPointToRect(pluginAbs, x, y)
+	if insideX != x || insideY != y {
+		x, y = RectCenter(pluginAbs)
+		if err := s.injector.MoveAbs(x, y); err != nil {
+			return err
+		}
+	}
+
+	targetX, targetY := ClampPointToRect(pluginAbs, x+msg.DX, y+msg.DY)
+	return s.injector.MoveAbs(targetX, targetY)
 }
 
 // handleClick injects a left click at the current cursor position.
 func (s *Server) handleClick() error {
 	if !s.session.InputEnabled() {
 		return nil
+	}
+	if s.session.Mode() == session.ModeRun {
+		_ = s.cageCursorIfRun()
 	}
 	if err := s.injector.LeftDown(); err != nil {
 		return err
@@ -398,10 +435,50 @@ func (s *Server) notifyPipeline(reason string) {
 
 // clickPreserveCursor focuses a target point without leaving the cursor displaced when supported by the injector.
 func (s *Server) clickPreserveCursor(x, y int) error {
+	if s.session.Mode() == session.ModeRun {
+		return s.injector.ClickAt(x, y)
+	}
 	if injector, ok := s.injector.(interface{ ClickAtPreserveCursor(x, y int) error }); ok {
 		return injector.ClickAtPreserveCursor(x, y)
 	}
 	return s.injector.ClickAt(x, y)
+}
+
+// cursorPos returns the current cursor position when supported by the injector.
+func (s *Server) cursorPos() (int, int, bool) {
+	if provider, ok := s.injector.(CursorProvider); ok {
+		return provider.CursorPos()
+	}
+	return 0, 0, false
+}
+
+// cageCursorIfRun ensures the cursor stays inside the calibrated plugin rect in Run mode.
+func (s *Server) cageCursorIfRun() error {
+	if !s.session.InputEnabled() {
+		return nil
+	}
+	if s.session.Mode() != session.ModeRun {
+		return nil
+	}
+	pluginAbs, err := s.pluginAbsVirtual(s.session.GetCalib())
+	if err != nil {
+		return nil
+	}
+	pluginAbs = calib.Normalize(pluginAbs)
+	if pluginAbs.W <= 0 || pluginAbs.H <= 0 {
+		return nil
+	}
+
+	x, y, ok := s.cursorPos()
+	if !ok {
+		return nil
+	}
+	cx, cy := ClampPointToRect(pluginAbs, x, y)
+	if cx == x && cy == y {
+		return nil
+	}
+	safeX, safeY := RectCenter(pluginAbs)
+	return s.injector.MoveAbs(safeX, safeY)
 }
 
 // pluginAbsVirtual converts the stored plugin rectangle into absolute virtual-desktop coordinates.
