@@ -5,6 +5,7 @@ import { Calibrator } from "./calib.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindScrollPad } from "./scrollpad.js";
 import { bindPanZoom } from "./panzoom.js";
+import { webRTCContentRect } from "./calib_webrtc.js";
 
 const app = document.querySelector(".app");
 const statusDot = document.getElementById("status-dot");
@@ -180,19 +181,27 @@ restartBtn.addEventListener("click", () => {
 modePresetupBtn.addEventListener("click", () => {
   controlClient?.setMode("presetup");
   currentMode = "presetup";
+  syncModeClass();
   updateExpectedMedia();
   syncCalibEditAvailability();
   calibrator?.setMode?.(currentMode);
   startAspectRatioPoll();
+  if (document.body.classList.contains("is-fullscreen")) {
+    window.setTimeout(() => applySavedScaleOrReset(), 150);
+  }
 });
 
 modeRunBtn.addEventListener("click", () => {
   controlClient?.setMode("run");
   currentMode = "run";
+  syncModeClass();
   updateExpectedMedia();
   syncCalibEditAvailability();
   calibrator?.setMode?.(currentMode);
   startAspectRatioPoll();
+  if (document.body.classList.contains("is-fullscreen")) {
+    window.setTimeout(() => applySavedScaleOrReset(), 150);
+  }
 });
 
 videoWebRTCBtn.addEventListener("click", () => {
@@ -412,6 +421,7 @@ async function bootstrap() {
 function applyState(state) {
   updateModeButtons(state.mode || "presetup");
   currentMode = state.mode || "presetup";
+  syncModeClass();
   currentMonitorIndex = state.monitor || 1;
   currentCalibData = state.calibData || null;
   inputToggle.checked = Boolean(state.inputEnabled);
@@ -494,6 +504,12 @@ function updateModeButtons(mode) {
   const isRun = mode === "run";
   modeRunBtn.classList.toggle("active", isRun);
   modePresetupBtn.classList.toggle("active", !isRun);
+}
+
+function syncModeClass() {
+  const isRun = currentMode === "run";
+  document.body.classList.toggle("mode-run", isRun);
+  document.body.classList.toggle("mode-presetup", !isRun);
 }
 
 function updateVideoButtons(mode) {
@@ -586,6 +602,9 @@ async function setVideoMode(next) {
   videoMode = next;
   updateVideoButtons(videoMode);
   controlClient?.setVideoMode(videoMode);
+  if (document.body.classList.contains("is-fullscreen")) {
+    applySavedScaleOrReset();
+  }
 
   if (videoMode === "mjpeg") {
     webrtcClient?.close();
@@ -656,13 +675,26 @@ async function startWebRTCOrFallback() {
 }
 
 function contentRect(bounds) {
+  if (videoMode === "webrtc" && document.body.classList.contains("is-fullscreen")) {
+    const rect = webRTCContentRect(overlay, video);
+    if (rect && rect.width > 0 && rect.height > 0) {
+      return rect;
+    }
+  }
   const size = mediaSize(bounds);
   const mediaW = size.width;
   const mediaH = size.height;
   if (mediaW <= 0 || mediaH <= 0) {
     return { x: 0, y: 0, width: bounds.width, height: bounds.height };
   }
-  const base = containRect(bounds, mediaW, mediaH);
+  let base = containRect(bounds, mediaW, mediaH);
+  if (document.body.classList.contains("is-fullscreen")) {
+    // Fullscreen Run uses object-fit: fill to maximize usable area on mobile.
+    // Presetup keeps aspect ratio (contain) so users can place calibration rectangles accurately.
+    if (currentMode === "run" && videoMode !== "webrtc") {
+      base = { x: 0, y: 0, width: bounds.width, height: bounds.height };
+    }
+  }
   if (!document.body.classList.contains("is-fullscreen")) {
     return base;
   }
@@ -697,14 +729,12 @@ function adjustScale(axis, delta) {
 
 function resetScale() {
   if (!videoWrap) return;
-  const bounds = videoWrap.getBoundingClientRect();
-  const size = mediaSize(bounds);
-  if (!size.width || !size.height) return;
-  const base = containRect(bounds, size.width, size.height);
-  fsScaleX = base.width > 0 ? clamp(bounds.width / base.width, fsScaleMin, fsScaleMax) : 1.0;
-  fsScaleY = base.height > 0 ? clamp(bounds.height / base.height, fsScaleMin, fsScaleMax) : 1.0;
-  fsScaleX = Math.round(fsScaleX * 20) / 20;
-  fsScaleY = Math.round(fsScaleY * 20) / 20;
+  if (!document.body.classList.contains("is-fullscreen")) {
+    return;
+  }
+  // Fullscreen baseline is already "fill"; scale is only for overscan tuning.
+  fsScaleX = 1.0;
+  fsScaleY = 1.0;
   applyScale();
   saveScalePrefs();
 }
@@ -726,12 +756,36 @@ function applySavedScaleOrReset() {
 }
 
 function scaleStorageKey() {
-  return `deskslice:fsScale:${location.host}`;
+  const mode = currentMode === "run" ? "run" : "presetup";
+  return `deskslice:fsScale:${location.host}:${mode}`;
+}
+
+function legacyScaleStorageKeys() {
+  const mode = currentMode === "run" ? "run" : "presetup";
+  const keys = [];
+
+  // New (previous iteration): per video mode + per mode.
+  // Prefer the current video mode, then fall back to the other.
+  const currentVM = videoMode === "webrtc" ? "webrtc" : "mjpeg";
+  const otherVM = currentVM === "webrtc" ? "mjpeg" : "webrtc";
+  keys.push(`deskslice:fsScale:${location.host}:${currentVM}:${mode}`);
+  keys.push(`deskslice:fsScale:${location.host}:${otherVM}:${mode}`);
+
+  // Oldest: one global scale for everything.
+  keys.push(`deskslice:fsScale:${location.host}`);
+  return keys;
 }
 
 function loadScalePrefs() {
   try {
-    const raw = window.localStorage.getItem(scaleStorageKey());
+    let raw = window.localStorage.getItem(scaleStorageKey());
+    if (!raw) {
+      for (const key of legacyScaleStorageKeys()) {
+        raw = window.localStorage.getItem(key);
+        if (raw) break;
+      }
+      if (!raw) return false;
+    }
     if (!raw) return false;
     const parsed = JSON.parse(raw);
     const sx = Number(parsed?.x);
@@ -739,6 +793,7 @@ function loadScalePrefs() {
     if (!Number.isFinite(sx) || !Number.isFinite(sy)) return false;
     fsScaleX = clamp(sx, fsScaleMin, fsScaleMax);
     fsScaleY = clamp(sy, fsScaleMin, fsScaleMax);
+    saveScalePrefs();
     return true;
   } catch (_) {
     return false;

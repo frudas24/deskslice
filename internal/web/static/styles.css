@@ -571,9 +571,16 @@ body.is-fullscreen .edge-exit {
 
 body.is-fullscreen video,
 body.is-fullscreen #mjpeg {
-  object-fit: contain;
   transform: scaleX(var(--fs-scale-x, 1)) scaleY(var(--fs-scale-y, 1));
   transform-origin: center center;
+}
+
+body.is-fullscreen video {
+  object-fit: contain;
+}
+
+body.is-fullscreen.mode-run #mjpeg {
+  object-fit: fill;
 }
 
 /* WebRTC fullscreen: avoid transforms on <video> (some mobile browsers render black when transformed). */
@@ -588,7 +595,12 @@ body.is-fullscreen.video-webrtc video {
   inset: auto;
   width: calc(100% * var(--webrtc-scale-x, 1));
   height: calc(100% * var(--webrtc-scale-y, 1));
+  object-fit: contain;
   transform: none !important;
+}
+
+body.is-fullscreen.mode-run.video-webrtc video {
+  object-fit: fill;
 }
 
 body.is-fullscreen.video-webrtc.pointer-locked video {

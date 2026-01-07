@@ -492,16 +492,30 @@ export class Calibrator {
   }
 
   contentRect(bounds) {
+    if (document.body.classList.contains("video-webrtc") && document.body.classList.contains("is-fullscreen")) {
+      const rect = webRTCContentRect(this.overlay, this.video);
+      if (rect && rect.width > 0 && rect.height > 0) {
+        return rect;
+      }
+    }
     const size = this.mediaSize(bounds);
     const mediaW = size.width;
     const mediaH = size.height;
     if (mediaW <= 0 || mediaH <= 0) {
       return { x: 0, y: 0, width: bounds.width, height: bounds.height };
     }
-    const scale = Math.min(bounds.width / mediaW, bounds.height / mediaH);
-    const width = mediaW * scale;
-    const height = mediaH * scale;
-    const base = { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };
+    let base;
+    const fullscreen = document.body.classList.contains("is-fullscreen");
+    const runFill = fullscreen && document.body.classList.contains("mode-run");
+    if (!fullscreen || !runFill) {
+      const scale = Math.min(bounds.width / mediaW, bounds.height / mediaH);
+      const width = mediaW * scale;
+      const height = mediaH * scale;
+      base = { x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width, height };
+    } else {
+      // Fullscreen Run uses object-fit: fill to maximize usable area on mobile.
+      base = { x: 0, y: 0, width: bounds.width, height: bounds.height };
+    }
     if (!document.body.classList.contains("is-fullscreen")) {
       return base;
     }
@@ -705,6 +719,8 @@ export class Calibrator {
     return out;
   }
 }
+
+import { webRTCContentRect } from "./calib_webrtc.js";
 
 function stepColor(step) {
   switch (step) {
