@@ -28,6 +28,7 @@ const (
 // Config holds runtime configuration values.
 type Config struct {
 	ListenAddr      string
+	PasswordMode    bool
 	UIPassword      string
 	DataDir         string
 	CalibPath       string
@@ -47,6 +48,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		ListenAddr:      defaultListenAddr,
+		PasswordMode:    true,
 		DataDir:         defaultDataDir,
 		CalibPath:       filepath.Join(defaultDataDir, "calib.json"),
 		FFmpegPath:      defaultFFmpegPath,
@@ -70,6 +72,7 @@ func Load() (Config, error) {
 	cfg.CalibPath = envString("CALIB_PATH", filepath.Join(cfg.DataDir, "calib.json"))
 	cfg.FFmpegPath = envString("FFMPEG_PATH", cfg.FFmpegPath)
 	cfg.CaptureDriver = normalizeCaptureDriver(envString("CAPTURE_DRIVER", cfg.CaptureDriver))
+	cfg.PasswordMode = envBoolAny(true, "PASSWORD_MODE", "password_mode")
 	cfg.UIPassword = strings.TrimSpace(os.Getenv("UI_PASSWORD"))
 
 	fps, err := envInt("FPS", cfg.FPS)
@@ -125,7 +128,12 @@ func Load() (Config, error) {
 	}
 	cfg.ScrollMaxDelta = scrollMaxDelta
 
-	if cfg.UIPassword == "" {
+	if !cfg.PasswordMode {
+		// Dev mode: bypass auth gates entirely.
+		cfg.UIPassword = ""
+	}
+
+	if cfg.PasswordMode && cfg.UIPassword == "" {
 		return Config{}, errors.New("UI_PASSWORD is required")
 	}
 
@@ -177,6 +185,25 @@ func envBool(key string, def bool) bool {
 	default:
 		return def
 	}
+}
+
+// envBoolAny returns a bool env override when any key is present, otherwise a default.
+func envBoolAny(def bool, keys ...string) bool {
+	for _, key := range keys {
+		raw := strings.TrimSpace(os.Getenv(key))
+		if raw == "" {
+			continue
+		}
+		switch strings.ToLower(raw) {
+		case "1", "true", "yes", "y", "on":
+			return true
+		case "0", "false", "no", "n", "off":
+			return false
+		default:
+			return def
+		}
+	}
+	return def
 }
 
 // loadEnvFile loads KEY=VALUE pairs from a .env file.

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/frudas24/deskslice/internal/app"
@@ -109,7 +110,15 @@ func logEnvStatus(cfg config.Config) {
 	} else {
 		log.Printf("env check: missing (%s)", envPath)
 	}
-	log.Printf("env UI_PASSWORD: set")
+	if cfg.PasswordMode {
+		if strings.TrimSpace(os.Getenv("UI_PASSWORD")) == "" {
+			log.Printf("env UI_PASSWORD: missing")
+		} else {
+			log.Printf("env UI_PASSWORD: set")
+		}
+	} else {
+		log.Printf("env PASSWORD_MODE: disabled (dev mode)")
+	}
 }
 
 // logFFmpegStatus reports whether the ffmpeg binary is discoverable.

@@ -55,6 +55,10 @@ func New(password string) *Session {
 func (s *Session) Authenticate(pass string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.password == "" {
+		s.authenticated = true
+		return true
+	}
 	if pass != "" && pass == s.password {
 		s.authenticated = true
 		return true
@@ -67,6 +71,9 @@ func (s *Session) Authenticate(pass string) bool {
 func (s *Session) Logout() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.password == "" {
+		return
+	}
 	s.authenticated = false
 }
 
@@ -74,7 +81,7 @@ func (s *Session) Logout() {
 func (s *Session) IsAuthenticated() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.authenticated
+	return s.password == "" || s.authenticated
 }
 
 // SetInputEnabled toggles whether inputs are forwarded to the host.
@@ -160,7 +167,7 @@ func (s *Session) Snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return Snapshot{
-		Authenticated: s.authenticated,
+		Authenticated: s.password == "" || s.authenticated,
 		InputEnabled:  s.inputEnabled,
 		Mode:          s.mode,
 		MonitorIndex:  s.monitorIndex,

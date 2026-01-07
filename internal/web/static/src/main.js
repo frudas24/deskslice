@@ -1,4 +1,4 @@
-import { login, getState, getMonitors, updateConfig } from "./api.js";
+import { login, logout, getState, getMonitors, updateConfig } from "./api.js";
 import { ControlClient } from "./control.js";
 import { WebRTCClient } from "./webrtc.js";
 import { Calibrator } from "./calib.js";
@@ -20,6 +20,7 @@ const videoWebRTCBtn = document.getElementById("video-webrtc");
 const videoMJPEGBtn = document.getElementById("video-mjpeg");
 const monitorSelect = document.getElementById("monitor");
 const restartBtn = document.getElementById("restart-presetup");
+const logoutBtn = document.getElementById("logout");
 const inputToggle = document.getElementById("input-enabled");
 const setPluginBtn = document.getElementById("set-plugin");
 const setChatBtn = document.getElementById("set-chat");
@@ -160,6 +161,15 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (err) {
     loginHint.textContent = "Login failed. Check password.";
   }
+});
+
+logoutBtn?.addEventListener("click", async () => {
+  try {
+    await logout();
+  } catch (_) {
+    // ignore
+  }
+  location.reload();
 });
 
 restartBtn.addEventListener("click", () => {
