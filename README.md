@@ -18,6 +18,8 @@ calibration (no OCR, no UI re-implementation).
 
 ## Demo
 
+![DeskSlice demo](docs/demo.gif)
+
 - Walkthrough video: `docs/how_to_use.webm`
 - Screenshot (click to open the video): [![DeskSlice walkthrough](docs/how_to_folders.png)](docs/how_to_use.webm)
 
