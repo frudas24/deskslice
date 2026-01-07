@@ -18,9 +18,8 @@ calibration (no OCR, no UI re-implementation).
 
 ## Demo
 
-![DeskSlice demo](docs/demo.gif)
-
-`docs/demo.gif` a short capture showing: login → presetup calibration → run mode → typing + scroll.
+- Walkthrough video: `docs/how_to_use.webm`
+- Screenshot (click to open the video): [![DeskSlice walkthrough](docs/how_to_folders.png)](docs/how_to_use.webm)
 
 ## Status
 
