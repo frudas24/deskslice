@@ -34,6 +34,8 @@ func newRTPListener(port int) (*rtpListener, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Reduce risk of local packet drops under load (desktop capture + H264 can be bursty).
+	_ = conn.SetReadBuffer(4 << 20)
 	return &rtpListener{conn: conn}, nil
 }
 
@@ -120,7 +122,6 @@ func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP, params func() rtpW
 // rtpWriteParams describes the RTP header fields expected by the active WebRTC sender.
 type rtpWriteParams struct {
 	payloadType uint8
-	ssrc        uint32
 }
 
 // rtpRewriter rewrites incoming RTP packets to be stable across source restarts.
@@ -140,9 +141,6 @@ func (r *rtpRewriter) Apply(pkt *rtp.Packet, params rtpWriteParams) {
 
 	if params.payloadType != 0 {
 		pkt.PayloadType = params.payloadType
-	}
-	if params.ssrc != 0 {
-		pkt.SSRC = params.ssrc
 	}
 
 	// Always resequence; this keeps the receiver happy when ffmpeg restarts/reset seq numbers.

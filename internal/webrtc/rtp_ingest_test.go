@@ -76,11 +76,8 @@ func TestRTPRewriterLargeJump(t *testing.T) {
 func TestRTPRewriterOverridesHeader(t *testing.T) {
 	var rw rtpRewriter
 	p := &rtp.Packet{Header: rtp.Header{SequenceNumber: 1, Timestamp: 1, PayloadType: 96, SSRC: 123}}
-	rw.Apply(p, rtpWriteParams{payloadType: 120, ssrc: 999})
+	rw.Apply(p, rtpWriteParams{payloadType: 120})
 	if p.PayloadType != 120 {
 		t.Fatalf("expected payload type override, got %d", p.PayloadType)
-	}
-	if p.SSRC != 999 {
-		t.Fatalf("expected ssrc override, got %d", p.SSRC)
 	}
 }

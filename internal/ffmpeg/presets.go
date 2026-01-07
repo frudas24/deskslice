@@ -52,9 +52,13 @@ func buildInputArgs(m monitor.Monitor, opts Options, useD3D11 bool) []string {
 
 // buildOutputArgs builds the encode/output arguments.
 func buildOutputArgs(opts Options, port int, cropFilter string) []string {
-	keyint := opts.FPS * 2
+	// Keep keyframes frequent to help decoders recover quickly after restarts/crop changes.
+	keyint := opts.FPS
 	if keyint <= 0 {
-		keyint = 60
+		keyint = 30
+	}
+	if keyint < 15 {
+		keyint = 15
 	}
 	args := []string{
 		"-an",
@@ -67,7 +71,6 @@ func buildOutputArgs(opts Options, port int, cropFilter string) []string {
 		"-preset", "ultrafast",
 		"-tune", "zerolatency",
 		"-profile:v", "baseline",
-		"-level", "3.1",
 		"-g", fmt.Sprintf("%d", keyint),
 		"-keyint_min", fmt.Sprintf("%d", keyint),
 		"-bf", "0",

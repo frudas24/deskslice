@@ -149,7 +149,6 @@ func (p *Publisher) UpdateWriteParamsFromPeer(peer *webrtc.PeerConnection) {
 		return
 	}
 	var pt uint8
-	var ssrc uint32
 	for _, sender := range peer.GetSenders() {
 		track := sender.Track()
 		if track == nil || track.Kind() != webrtc.RTPCodecTypeVideo {
@@ -162,15 +161,12 @@ func (p *Publisher) UpdateWriteParamsFromPeer(peer *webrtc.PeerConnection) {
 				break
 			}
 		}
-		if len(params.Encodings) > 0 && params.Encodings[0].SSRC != 0 {
-			ssrc = uint32(params.Encodings[0].SSRC)
-		}
-		if pt != 0 || ssrc != 0 {
+		if pt != 0 {
 			break
 		}
 	}
 	p.writeMu.Lock()
-	p.writeParams = rtpWriteParams{payloadType: pt, ssrc: ssrc}
+	p.writeParams = rtpWriteParams{payloadType: pt}
 	p.writeMu.Unlock()
 }
 
