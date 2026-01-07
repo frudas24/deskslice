@@ -76,7 +76,9 @@ func New(cfg config.Config, sess *session.Session, runner *ffmpeg.Runner, publis
 
 	app.signaling = signaling.NewServer(publisher, policy, sess.IsAuthenticated)
 	app.control = control.NewServer(sess, injector, app.ListMonitors, func(reason string) {
-		_ = app.RestartPipeline(reason)
+		if err := app.RestartPipeline(reason); err != nil {
+			log.Printf("pipeline restart (%s) failed: %v", reason, err)
+		}
 	}, func(c calib.Calib) error {
 		return calib.Save(cfg.CalibPath, c)
 	})
@@ -116,6 +118,7 @@ func (a *App) Stop() error {
 
 	a.publisher.StopForwarding()
 	a.publisher.ClosePeer()
+	a.publisher.CloseRTP()
 	if a.preview != nil {
 		_ = a.preview.Stop()
 	}
@@ -173,11 +176,16 @@ func (a *App) RestartPipeline(reason string) error {
 		return nil
 	}
 
+	port, err = a.publisher.RTPPort()
+	if err != nil {
+		return err
+	}
+
 	if mode == session.ModeRun {
 		c := a.session.GetCalib()
-		port, _, err = a.runner.StartRun(m, c.PluginAbs, opts)
+		_, err = a.runner.StartRunOnPort(m, c.PluginAbs, opts, port)
 	} else {
-		port, _, err = a.runner.StartPresetup(m, opts)
+		_, err = a.runner.StartPresetupOnPort(m, opts, port)
 	}
 	if err != nil {
 		return err

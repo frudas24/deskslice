@@ -39,6 +39,18 @@ func newRTPListener(port int) (*rtpListener, error) {
 	return &rtpListener{conn: conn}, nil
 }
 
+// port returns the local UDP port for the listener.
+func (l *rtpListener) port() int {
+	if l == nil || l.conn == nil {
+		return 0
+	}
+	addr, ok := l.conn.LocalAddr().(*net.UDPAddr)
+	if !ok || addr == nil {
+		return 0
+	}
+	return addr.Port
+}
+
 // start begins forwarding RTP packets into the provided track.
 func (l *rtpListener) start(track *webrtc.TrackLocalStaticRTP, params func() rtpWriteParams) error {
 	l.mu.Lock()

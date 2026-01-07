@@ -104,9 +104,12 @@ func (p *Publisher) AttachRTP(port int) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	// Keep a stable listener/port for the lifetime of the app, to avoid resets that can stall decoders.
 	if p.rtpListener != nil {
-		p.rtpListener.close()
-		p.rtpListener = nil
+		if port != 0 && p.rtpListener.port() != port {
+			return fmt.Errorf("rtp listener already bound to port %d", p.rtpListener.port())
+		}
+		return nil
 	}
 
 	listener, err := newRTPListener(port)
@@ -115,6 +118,24 @@ func (p *Publisher) AttachRTP(port int) error {
 	}
 	p.rtpListener = listener
 	return nil
+}
+
+// RTPPort returns the local port used for RTP ingest, creating the listener if needed.
+func (p *Publisher) RTPPort() (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.rtpListener == nil {
+		listener, err := newRTPListener(0)
+		if err != nil {
+			return 0, err
+		}
+		p.rtpListener = listener
+	}
+	port := p.rtpListener.port()
+	if port == 0 {
+		return 0, fmt.Errorf("rtp listener has no port")
+	}
+	return port, nil
 }
 
 // StartForwarding begins forwarding RTP packets into the WebRTC track.
@@ -140,6 +161,16 @@ func (p *Publisher) StopForwarding() {
 	defer p.mu.Unlock()
 	if p.rtpListener != nil {
 		p.rtpListener.stop()
+	}
+}
+
+// CloseRTP closes the UDP listener used for RTP ingest.
+func (p *Publisher) CloseRTP() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.rtpListener != nil {
+		p.rtpListener.close()
+		p.rtpListener = nil
 	}
 }
 

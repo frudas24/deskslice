@@ -40,9 +40,21 @@ func (r *Runner) StartPresetup(m monitor.Monitor, opts Options) (int, func() err
 	return r.start(ModePresetup, m, calib.Rect{}, opts)
 }
 
+// StartPresetupOnPort starts fullscreen capture to a fixed RTP port (used to keep a stable RTP ingest port).
+func (r *Runner) StartPresetupOnPort(m monitor.Monitor, opts Options, port int) (func() error, error) {
+	_, stop, err := r.startOnPort(ModePresetup, m, calib.Rect{}, opts, port)
+	return stop, err
+}
+
 // StartRun starts cropped capture and returns the RTP port and stop function.
 func (r *Runner) StartRun(m monitor.Monitor, plugin calib.Rect, opts Options) (int, func() error, error) {
 	return r.start(ModeRun, m, plugin, opts)
+}
+
+// StartRunOnPort starts cropped capture to a fixed RTP port (used to keep a stable RTP ingest port).
+func (r *Runner) StartRunOnPort(m monitor.Monitor, plugin calib.Rect, opts Options, port int) (func() error, error) {
+	_, stop, err := r.startOnPort(ModeRun, m, plugin, opts, port)
+	return stop, err
 }
 
 // Stop terminates any running ffmpeg process.
@@ -69,6 +81,13 @@ func (r *Runner) start(mode string, m monitor.Monitor, plugin calib.Rect, opts O
 	return r.startLocked(mode, m, plugin, opts)
 }
 
+// startOnPort starts ffmpeg using a fixed RTP port.
+func (r *Runner) startOnPort(mode string, m monitor.Monitor, plugin calib.Rect, opts Options, port int) (int, func() error, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.startLockedOnPort(mode, m, plugin, opts, port)
+}
+
 // startLocked starts ffmpeg while holding the runner lock.
 func (r *Runner) startLocked(mode string, m monitor.Monitor, plugin calib.Rect, opts Options) (int, func() error, error) {
 	if opts.FFmpegPath == "" {
@@ -84,6 +103,15 @@ func (r *Runner) startLocked(mode string, m monitor.Monitor, plugin calib.Rect, 
 	port, err := allocatePort()
 	if err != nil {
 		return 0, nil, err
+	}
+
+	return r.startLockedOnPort(mode, m, plugin, opts, port)
+}
+
+// startLockedOnPort starts ffmpeg while holding the runner lock, targeting the provided RTP port.
+func (r *Runner) startLockedOnPort(mode string, m monitor.Monitor, plugin calib.Rect, opts Options, port int) (int, func() error, error) {
+	if port <= 0 {
+		return 0, nil, fmt.Errorf("invalid rtp port %d", port)
 	}
 
 	useD3D11 := opts.CaptureDriver == "" || strings.EqualFold(opts.CaptureDriver, "d3d11grab")
