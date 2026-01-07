@@ -487,11 +487,16 @@ func (s *Server) pluginAbsVirtual(c calib.Calib) (calib.Rect, error) {
 	if err != nil {
 		return calib.Rect{}, err
 	}
-	monitorIndex := c.MonitorIndex
-	if monitorIndex <= 0 {
-		monitorIndex = s.session.Monitor()
+	// Use the currently selected monitor, since the capture pipeline is driven by session.Monitor().
+	monitorIndex := s.session.Monitor()
+	if monitorIndex <= 0 && c.MonitorIndex > 0 {
+		monitorIndex = c.MonitorIndex
 	}
 	m, ok := monitor.GetMonitorByIndex(monitors, monitorIndex)
+	if !ok && c.MonitorIndex > 0 && c.MonitorIndex != monitorIndex {
+		monitorIndex = c.MonitorIndex
+		m, ok = monitor.GetMonitorByIndex(monitors, monitorIndex)
+	}
 	if !ok {
 		return calib.Rect{}, fmt.Errorf("monitor %d not found", monitorIndex)
 	}
