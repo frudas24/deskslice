@@ -580,14 +580,44 @@ function updateWrapAspectRatio() {
 }
 
 function startAspectRatioPoll() {
-  if (aspectPollTimer) return;
+  if (aspectPollTimer) {
+    window.clearInterval(aspectPollTimer);
+    aspectPollTimer = null;
+  }
   let tries = 0;
+  let stable = 0;
+  let lastW = 0;
+  let lastH = 0;
+
   aspectPollTimer = window.setInterval(() => {
     tries += 1;
     updateWrapAspectRatio();
-    const videoReady = video.videoWidth > 0 && video.videoHeight > 0;
-    const mjpegReady = (mjpegImg?.naturalWidth || 0) > 0 && (mjpegImg?.naturalHeight || 0) > 0;
-    if (videoReady || mjpegReady || tries >= 40) {
+
+    const vw = video.videoWidth || 0;
+    const vh = video.videoHeight || 0;
+    const mw = mjpegImg?.naturalWidth || 0;
+    const mh = mjpegImg?.naturalHeight || 0;
+    const haveRealMedia = (vw > 0 && vh > 0) || (mw > 0 && mh > 0);
+
+    const bounds = videoWrap?.getBoundingClientRect?.();
+    const size = bounds ? mediaSize(bounds) : { width: 0, height: 0 };
+    const w = Math.round(Number(size?.width) || 0);
+    const h = Math.round(Number(size?.height) || 0);
+    if (w === lastW && h === lastH) {
+      stable += 1;
+    } else {
+      stable = 0;
+      lastW = w;
+      lastH = h;
+    }
+
+    const expW = expectedMedia?.width || 0;
+    const expH = expectedMedia?.height || 0;
+    const matchesExpected = expW > 0 && expH > 0 && Math.abs(w-expW) <= 2 && Math.abs(h-expH) <= 2;
+
+    // Keep polling after pipeline changes even if the video element already had dimensions,
+    // because RTP stream switches don't always fire loadedmetadata reliably on mobile.
+    if ((haveRealMedia && matchesExpected && stable >= 2) || tries >= 40) {
       window.clearInterval(aspectPollTimer);
       aspectPollTimer = null;
     }
