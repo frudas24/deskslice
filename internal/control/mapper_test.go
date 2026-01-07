@@ -29,8 +29,8 @@ func TestNormToAbsPresetup_Center(t *testing.T) {
 func TestNormToAbsPresetup_BottomRight(t *testing.T) {
 	m := monitor.Monitor{X: 100, Y: 200, W: 300, H: 400}
 	x, y := NormToAbsPresetup(1, 1, m)
-	if x != 400 || y != 600 {
-		t.Fatalf("expected (400,600), got (%d,%d)", x, y)
+	if x != 399 || y != 599 {
+		t.Fatalf("expected (399,599), got (%d,%d)", x, y)
 	}
 }
 
@@ -56,8 +56,8 @@ func TestNormToAbsRun_Center(t *testing.T) {
 func TestNormToAbsRun_BottomRight(t *testing.T) {
 	r := calib.Rect{X: 10, Y: 20, W: 30, H: 40}
 	x, y := NormToAbsRun(1, 1, r)
-	if x != 40 || y != 60 {
-		t.Fatalf("expected (40,60), got (%d,%d)", x, y)
+	if x != 39 || y != 59 {
+		t.Fatalf("expected (39,59), got (%d,%d)", x, y)
 	}
 }
 
@@ -65,7 +65,7 @@ func TestNormToAbsRun_BottomRight(t *testing.T) {
 func TestNormToAbs_ClampOutOfRange(t *testing.T) {
 	m := monitor.Monitor{X: 100, Y: 200, W: 300, H: 400}
 	x, y := NormToAbsPresetup(-1, 2, m)
-	if x != 100 || y != 600 {
-		t.Fatalf("expected clamped (100,600), got (%d,%d)", x, y)
+	if x != 100 || y != 599 {
+		t.Fatalf("expected clamped (100,599), got (%d,%d)", x, y)
 	}
 }
