@@ -60,6 +60,7 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 
 - Fullscreen: tap the video to show/hide the overlay controls; use `Menu` and `Chat` drawers.
 - Mouse lock: in fullscreen, the mouse icon toggles whether touches send input; when locked, you can pinch-zoom and pan the video locally (no host input).
+- Run mode safety: when `Run` is active, the cursor is caged to the calibrated `plugin` rectangle to reduce accidental clicks outside the Codex panel; in `Stop`/presetup it is unrestricted.
 - Scroll mode: in fullscreen, the scroll icon enables a joystick-style scroll overlay (horizontal + vertical).
 - Post FX: adjust `Clarity` and `Denoise` sliders (client-side CSS filters). Set both to `0` to disable.
 - Debug overlays: enable `Debug overlays` to see the calibrated rectangles over the stream.
