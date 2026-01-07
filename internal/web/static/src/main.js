@@ -527,6 +527,7 @@ function setStatus(state) {
 
 function updatePreviewVisibility() {
   if (!mjpegImg) return;
+  document.body.classList.toggle("video-webrtc", videoMode === "webrtc");
   if (videoMode === "mjpeg") {
     mjpegImg.style.display = "block";
     video.style.display = "none";
@@ -701,6 +702,7 @@ function resetScale() {
 function applyScale() {
   videoWrap.style.setProperty("--fs-scale-x", String(fsScaleX));
   videoWrap.style.setProperty("--fs-scale-y", String(fsScaleY));
+  applyWebRTCScale();
   calibrator?.resize();
 }
 
@@ -800,6 +802,7 @@ function resetPanZoom() {
   pzX = 0;
   pzY = 0;
   applyPanZoomVars();
+  applyWebRTCScale();
   panZoom?.reset?.();
 }
 
@@ -808,6 +811,19 @@ function applyPanZoomVars() {
   videoWrap.style.setProperty("--pz-scale", String(pzScale));
   videoWrap.style.setProperty("--pz-x", `${Math.round(pzX)}px`);
   videoWrap.style.setProperty("--pz-y", `${Math.round(pzY)}px`);
+  applyWebRTCScale();
+}
+
+function applyWebRTCScale() {
+  if (!videoWrap) return;
+  let sx = fsScaleX;
+  let sy = fsScaleY;
+  if (videoMode === "webrtc" && document.body.classList.contains("is-fullscreen") && document.body.classList.contains("pointer-locked")) {
+    sx *= pzScale;
+    sy *= pzScale;
+  }
+  videoWrap.style.setProperty("--webrtc-scale-x", String(sx));
+  videoWrap.style.setProperty("--webrtc-scale-y", String(sy));
 }
 
 function applyPanZoom(evt) {

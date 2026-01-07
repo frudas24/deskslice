@@ -576,6 +576,26 @@ body.is-fullscreen #mjpeg {
   transform-origin: center center;
 }
 
+/* WebRTC fullscreen: avoid transforms on <video> (some mobile browsers render black when transformed). */
+body.is-fullscreen.video-webrtc .video-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.is-fullscreen.video-webrtc video {
+  position: relative;
+  inset: auto;
+  width: calc(100% * var(--webrtc-scale-x, 1));
+  height: calc(100% * var(--webrtc-scale-y, 1));
+  transform: none !important;
+}
+
+body.is-fullscreen.video-webrtc.pointer-locked video {
+  left: var(--pz-x, 0px);
+  top: var(--pz-y, 0px);
+}
+
 body.is-fullscreen.pointer-locked #overlay {
   pointer-events: none;
   touch-action: none;
