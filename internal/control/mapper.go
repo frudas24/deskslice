@@ -22,6 +22,7 @@ func NormToAbsRun(xn, yn float64, plugin calib.Rect) (int, int) {
 	return plugin.X + normToPixels(xn, plugin.W), plugin.Y + normToPixels(yn, plugin.H)
 }
 
+// normToPixels converts a normalized [0..1] coordinate into a pixel offset inside a span.
 func normToPixels(norm float64, span int) int {
 	if span <= 1 {
 		return 0
