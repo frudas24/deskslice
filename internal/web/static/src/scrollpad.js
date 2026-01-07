@@ -91,13 +91,14 @@ export function bindScrollPad({ overlay, canvas, getPoint, getMetrics, getContex
       const dist = Math.hypot(dx, dy);
       if (dist < 6) return;
 
-      const nx = clamp(dx / radius, -1, 1);
-      const ny = clamp(dy / radius, -1, 1);
       const strength = clamp(dist / radius, 0, 1);
       const eased = Math.pow(strength, 1.2);
 
-      const wheelX = Math.round(nx * eased * maxDelta);
-      const wheelY = Math.round(-ny * eased * maxDelta);
+      // Use direction * strength to avoid "squared" sensitivity (dx and strength both scaling wheel).
+      const dirX = dx / dist;
+      const dirY = dy / dist;
+      const wheelX = Math.round(dirX * eased * maxDelta);
+      const wheelY = Math.round(-dirY * eased * maxDelta);
       if (wheelX === 0 && wheelY === 0) return;
       sendWheel?.(startNorm.x, startNorm.y, wheelX, wheelY);
     }, tickMs);
