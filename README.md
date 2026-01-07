@@ -28,8 +28,8 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 
 ## Highlights
 
-- WebRTC video stream (H264) of the Codex panel (**experimental**).
-- MJPEG preview mode (default, more reliable) with optional WebRTC switching.
+- WebRTC video stream (H264) of the Codex panel (low-latency, primary mode).
+- MJPEG preview mode (fallback) with optional WebRTC switching.
 - Touch input mapping (tap, drag-scroll, typing).
 - Presetup mode to select monitor and trace plugin/chat/scroll rectangles.
 - Run mode with a cropped stream to the Codex panel only.
@@ -75,8 +75,8 @@ MVP scaffolding complete for Windows host. The full spec lives in `TODO/TODO_000
 - The server runs **one** `ffmpeg` pipeline at a time:
   - `WebRTC` runs `ffmpeg: start ... -f rtp rtp://127.0.0.1:<port>` (H264→RTP).
   - `MJPEG` runs `ffmpeg: preview ... -f rawvideo -` and serves `/mjpeg/desktop`.
-  - Default is `MJPEG` (more reliable); switch in the UI (Session → `WebRTC`) if you want lower latency.
-- WebRTC is still experimental (desktop capture → RTP ingest → WebRTC decode on mobile); if it misbehaves on your device, use MJPEG.
+  - Default is `MJPEG`; switch in the UI (Session → `WebRTC`) if you want lower latency.
+- WebRTC is fully functional; if you hit device-specific browser quirks, MJPEG remains a good fallback.
 - For MJPEG mode, the preview capture FPS is derived from `MJPEG_INTERVAL_MS` (smaller interval = higher FPS and more CPU).
 - Runtime tuning: `POST /api/config` (auth required) accepts `{ "mjpegIntervalMs": <int>, "mjpegQuality": <int> }` and applies it immediately when in MJPEG mode.
 - Reset: `POST /api/config` with `{ "reset": true }` restores MJPEG values loaded from `.env` at server startup.
