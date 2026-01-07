@@ -10,6 +10,10 @@ calibration (no OCR, no UI re-implementation).
 - Quick manual calibration so clicks/typing land in the right places (plugin/chat/scroll rectangles).
 - A mobile-first fullscreen UX with safety toggles (input lock, scroll overlay, etc.).
 
+## Motivation
+
+This started as a pragmatic solution to a personal problem: long hours at a desk were causing me persistent pain and discomfort. I wanted a way to keep working while changing posture and reducing strain, and I’m sharing it in the hope it helps others do the same.
+
 ## What It Does Not Try To Do
 
 - Not a general-purpose remote desktop replacement (no multi-monitor “desktop manager”, file transfer, clipboard sync, etc.).
@@ -18,7 +22,7 @@ calibration (no OCR, no UI re-implementation).
 
 ## Demo
 
-![DeskSlice demo](docs/demo.gif)
+<img src="docs/demo.gif" width="302" height="665" alt="DeskSlice demo">
 
 - Walkthrough video: `docs/how_to_use.webm`
 - Screenshot (click to open the video): [![DeskSlice walkthrough](docs/how_to_folders.png)](docs/how_to_use.webm)
