@@ -206,6 +206,7 @@ func (s *Server) handleOffer(conn *websocket.Conn, peer *webrtc.PeerConnection, 
 	if local == nil {
 		return fmt.Errorf("missing local description")
 	}
+	s.publisher.UpdateWriteParamsFromPeer(peer)
 	return s.sendTo(conn, Message{T: "answer", SDP: local.SDP})
 }
 

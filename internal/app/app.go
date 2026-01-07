@@ -189,7 +189,8 @@ func (a *App) RestartPipeline(reason string) error {
 	if err := a.publisher.StartForwarding(); err != nil {
 		return err
 	}
-	a.signaling.NotifyRestart()
+	// Avoid forcing renegotiation on every pipeline restart: if RTP forwarding stays stable, the
+	// existing PeerConnection can keep decoding without an explicit restart.
 	_ = reason
 	return nil
 }

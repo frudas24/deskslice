@@ -23,6 +23,8 @@ type rtpListener struct {
 	packetCount    int
 	firstLogged    bool
 	writeErrLogged bool
+
+	rewrite rtpRewriter
 }
 
 // newRTPListener binds a UDP port for RTP ingestion.
@@ -36,7 +38,7 @@ func newRTPListener(port int) (*rtpListener, error) {
 }
 
 // start begins forwarding RTP packets into the provided track.
-func (l *rtpListener) start(track *webrtc.TrackLocalStaticRTP) error {
+func (l *rtpListener) start(track *webrtc.TrackLocalStaticRTP, params func() rtpWriteParams) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.conn == nil {
@@ -50,7 +52,7 @@ func (l *rtpListener) start(track *webrtc.TrackLocalStaticRTP) error {
 	l.packetCount = 0
 	l.firstLogged = false
 	l.writeErrLogged = false
-	go l.loop(track)
+	go l.loop(track, params)
 	return nil
 }
 
@@ -74,7 +76,7 @@ func (l *rtpListener) close() {
 }
 
 // loop reads RTP packets and forwards them to the track.
-func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP) {
+func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP, params func() rtpWriteParams) {
 	buf := make([]byte, 1600)
 	lastLog := time.Now()
 	for {
@@ -101,9 +103,81 @@ func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP) {
 			log.Printf("rtp: packets=%d", l.packetCount)
 			lastLog = time.Now()
 		}
+
+		writeParams := rtpWriteParams{}
+		if params != nil {
+			writeParams = params()
+		}
+		l.rewrite.Apply(&pkt, writeParams)
+
 		if err := track.WriteRTP(&pkt); err != nil && !l.writeErrLogged {
 			log.Printf("rtp: write failed: %v", err)
 			l.writeErrLogged = true
 		}
 	}
+}
+
+// rtpWriteParams describes the RTP header fields expected by the active WebRTC sender.
+type rtpWriteParams struct {
+	payloadType uint8
+	ssrc        uint32
+}
+
+// rtpRewriter rewrites incoming RTP packets to be stable across source restarts.
+type rtpRewriter struct {
+	initialized bool
+	outSeq      uint16
+	outTS       uint32
+	lastInTS    uint32
+	lastDelta   uint32
+}
+
+// Apply rewrites sequence/timestamp and overrides payload type/ssrc when available.
+func (r *rtpRewriter) Apply(pkt *rtp.Packet, params rtpWriteParams) {
+	if pkt == nil {
+		return
+	}
+
+	if params.payloadType != 0 {
+		pkt.PayloadType = params.payloadType
+	}
+	if params.ssrc != 0 {
+		pkt.SSRC = params.ssrc
+	}
+
+	// Always resequence; this keeps the receiver happy when ffmpeg restarts/reset seq numbers.
+	if !r.initialized {
+		r.initialized = true
+		r.outSeq = pkt.SequenceNumber
+		r.lastInTS = pkt.Timestamp
+		r.outTS = 0
+		r.lastDelta = 0
+	} else {
+		r.outSeq++
+	}
+	pkt.SequenceNumber = r.outSeq
+
+	// Retimestamp by translating input timestamps into a continuous timeline.
+	// Keep all packets for a single input timestamp on the same output timestamp (frame boundary).
+	if pkt.Timestamp == r.lastInTS {
+		pkt.Timestamp = r.outTS
+		return
+	}
+
+	delta := pkt.Timestamp - r.lastInTS
+	// If the input jumps backwards/forwards a lot (typical after ffmpeg restart), don't forward a huge delta.
+	// Instead reuse the last "reasonable" delta or a conservative default (~33ms @ 90kHz).
+	if delta > 90000 {
+		if r.lastDelta > 0 && r.lastDelta <= 90000 {
+			delta = r.lastDelta
+		} else {
+			delta = 3000
+		}
+	} else {
+		r.lastDelta = delta
+	}
+
+	r.lastInTS = pkt.Timestamp
+	r.outTS += delta
+	pkt.Timestamp = r.outTS
 }
