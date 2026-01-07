@@ -109,11 +109,11 @@ func (l *rtpListener) loop(track *webrtc.TrackLocalStaticRTP, params func() rtpW
 			continue
 		}
 		l.packetCount++
-		if !l.firstLogged {
+		if debugRTPEnabled() && !l.firstLogged {
 			log.Printf("rtp: first packet ssrc=%d pt=%d seq=%d ts=%d", pkt.SSRC, pkt.PayloadType, pkt.SequenceNumber, pkt.Timestamp)
 			l.firstLogged = true
 		}
-		if time.Since(lastLog) > 5*time.Second {
+		if debugRTPEnabled() && time.Since(lastLog) > 5*time.Second {
 			log.Printf("rtp: packets=%d", l.packetCount)
 			lastLog = time.Now()
 		}

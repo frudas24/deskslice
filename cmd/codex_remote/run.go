@@ -24,10 +24,14 @@ import (
 )
 
 // run wires the application and blocks until shutdown.
-func run() error {
+func run(debug bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+	webrtc.SetDebugLogging(debug)
+	if debug {
+		log.Printf("debug: enabled")
 	}
 	logStartup(cfg)
 
