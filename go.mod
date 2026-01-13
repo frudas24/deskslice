@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
-	github.com/pion/interceptor v0.1.42
+	github.com/pion/interceptor v0.1.43
 	github.com/pion/rtp v1.10.0
 	github.com/pion/webrtc/v3 v3.3.6
 	golang.org/x/sys v0.40.0
