@@ -8,7 +8,7 @@ require (
 	github.com/pion/interceptor v0.1.44
 	github.com/pion/rtp v1.10.1
 	github.com/pion/webrtc/v3 v3.3.6
-	golang.org/x/sys v0.43.0
+	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
