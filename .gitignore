@@ -21,3 +21,4 @@ dist/
 data/*
 !data/.env.sample
 third_party/ffmpeg/win/ffmpeg.exe
+.agent/
