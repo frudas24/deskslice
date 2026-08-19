@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// newAuthedControlServer returns a control server with an authenticated session.
 func newAuthedControlServer() *Server {
 	sess := session.New("pw")
 	sess.Authenticate("pw")
@@ -21,6 +22,7 @@ func newAuthedControlServer() *Server {
 	return NewServer(sess, inj, func() ([]monitor.Monitor, error) { return monitors, nil }, nil, nil)
 }
 
+// TestServeHTTPRejectsCrossOrigin verifies cross-origin upgrades are rejected.
 func TestServeHTTPRejectsCrossOrigin(t *testing.T) {
 	srv := newAuthedControlServer()
 	ts := httptest.NewServer(srv)
@@ -38,6 +40,7 @@ func TestServeHTTPRejectsCrossOrigin(t *testing.T) {
 	}
 }
 
+// TestServeHTTPAcceptsSameOriginAndCloseActive verifies same-origin upgrades succeed and CloseActive closes the connection.
 func TestServeHTTPAcceptsSameOriginAndCloseActive(t *testing.T) {
 	srv := newAuthedControlServer()
 	ts := httptest.NewServer(srv)

@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestCheckOrigin verifies same-origin, cross-origin, and non-browser cases.
 func TestCheckOrigin(t *testing.T) {
 	tests := []struct {
 		name       string
