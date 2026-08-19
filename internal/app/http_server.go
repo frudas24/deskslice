@@ -96,6 +96,8 @@ func (a *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.session.Logout()
+	a.control.CloseActive()
+	a.signaling.CloseActive()
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 

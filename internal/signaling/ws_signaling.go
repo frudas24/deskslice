@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pub "github.com/frudas24/deskslice/internal/webrtc"
+	"github.com/frudas24/deskslice/internal/wsutil"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
@@ -45,7 +46,7 @@ func NewServer(publisher *pub.Publisher, policy ViewerPolicy, authFn func() bool
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  4096,
 			WriteBufferSize: 4096,
-			CheckOrigin:     func(*http.Request) bool { return true },
+			CheckOrigin:     wsutil.CheckOrigin,
 		},
 	}
 }
@@ -101,6 +102,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Printf("signaling: handle message failed: %v", err)
 			return
 		}
+	}
+}
+
+// CloseActive closes the active signaling connection, if any.
+func (s *Server) CloseActive() {
+	s.mu.Lock()
+	conn := s.conn
+	s.conn = nil
+	s.mu.Unlock()
+	if conn != nil {
+		_ = conn.Close()
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/frudas24/deskslice/internal/monitor"
 	"github.com/frudas24/deskslice/internal/session"
 	"github.com/frudas24/deskslice/internal/wininput"
+	"github.com/frudas24/deskslice/internal/wsutil"
 	"github.com/gorilla/websocket"
 )
 
@@ -40,7 +41,7 @@ func NewServer(sess *session.Session, injector wininput.Injector, listMonitors M
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  4096,
 			WriteBufferSize: 4096,
-			CheckOrigin:     func(*http.Request) bool { return true },
+			CheckOrigin:     wsutil.CheckOrigin,
 		},
 		onPipelineChange: onPipelineChange,
 		saveCalib:        saveCalib,
@@ -85,6 +86,16 @@ func (s *Server) acceptConn(conn *websocket.Conn) error {
 	}
 	s.conn = conn
 	return nil
+}
+
+// CloseActive closes the active control connection, if any.
+func (s *Server) CloseActive() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conn != nil {
+		_ = s.conn.Close()
+		s.conn = nil
+	}
 }
 
 // cleanupConn clears the active connection when closed.
