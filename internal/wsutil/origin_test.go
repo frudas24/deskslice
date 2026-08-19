@@ -8,10 +8,10 @@ import (
 // TestCheckOrigin verifies same-origin, cross-origin, and non-browser cases.
 func TestCheckOrigin(t *testing.T) {
 	tests := []struct {
-		name       string
-		origin     string
-		host       string
-		wantAllow  bool
+		name      string
+		origin    string
+		host      string
+		wantAllow bool
 	}{
 		{name: "no origin (non-browser)", origin: "", host: "192.168.1.5:8787", wantAllow: true},
 		{name: "same origin", origin: "http://192.168.1.5:8787", host: "192.168.1.5:8787", wantAllow: true},

@@ -53,7 +53,7 @@ func TestServeHTTPAcceptsSameOriginAndCloseActive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("same-origin upgrade failed: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	srv.CloseActive()
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
