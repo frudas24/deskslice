@@ -1,6 +1,6 @@
 module github.com/frudas24/deskslice
 
-go 1.25.5
+go 1.25.13
 
 require (
 	github.com/gorilla/websocket v1.5.3
