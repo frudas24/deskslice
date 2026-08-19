@@ -1,7 +1,7 @@
 // Package signaling defines signaling protocol messages for WebRTC.
 package signaling
 
-import "github.com/pion/webrtc/v3"
+import "github.com/pion/webrtc/v4"
 
 // Message is a websocket signaling payload.
 type Message struct {

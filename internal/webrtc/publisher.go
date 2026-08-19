@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/pion/interceptor"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 )
 
 // Publisher manages the WebRTC peer connection and video track.

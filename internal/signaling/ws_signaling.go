@@ -11,7 +11,7 @@ import (
 	pub "github.com/frudas24/deskslice/internal/webrtc"
 	"github.com/frudas24/deskslice/internal/wsutil"
 	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 )
 
 // ViewerPolicy controls how additional viewers are handled.
