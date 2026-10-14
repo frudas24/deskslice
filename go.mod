@@ -1,6 +1,6 @@
 module github.com/frudas24/deskslice
 
-go 1.25.13
+go 1.26.0
 
 require (
 	github.com/gorilla/websocket v1.5.3
@@ -8,7 +8,7 @@ require (
 	github.com/pion/interceptor v0.1.47
 	github.com/pion/rtp v1.10.5
 	github.com/pion/webrtc/v4 v4.2.18
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
